@@ -20,10 +20,10 @@ triggers.json (agent-written at session close):
     {"id": "breakdown", "type": "price_below", "symbol": "SPY",
      "value": 500, "note": "invalidates thesis", "protective": true,
      "model": "fable", "effort": "xhigh",
-     "charter": "prompts/CRISIS.md"},   # optional wake-as fields: the
-                                        # wake runs as the mind, effort,
-                                        # run_type, and charter the
-                                        # trigger names
+     "charter": "prompts/<MY-CHARTER>.md"},  # optional wake-as fields:
+                                        # the wake runs as the mind,
+                                        # effort, run_type, and charter
+                                        # the trigger names
     {"id": "iv-pop", "type": "pct_move", "symbol": "QQQ",
      "value": 2.5, "window_min": 15},
     {"id": "fill", "type": "order_fill", "order_id": "abc-123"}

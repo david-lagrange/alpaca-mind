@@ -224,6 +224,25 @@ seed_workspace() {
 seed_workspace mind "$SRC_DIR/mission"
 seed_workspace ui "$SRC_DIR/ui-mission"
 
+# Pre-trust each workspace for the Claude CLI. Headless sessions can't
+# click a trust dialog, and an untrusted workspace silently ignores the
+# permission rules in .claude/settings.json — the deny rules there are
+# law and must load.
+for u in mind ui; do
+  sudo -u "$u" -H python3 - "/srv/$u/.claude.json" "/srv/$u/workspace" <<'PY'
+import json, sys
+path, ws = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except (OSError, ValueError):
+    data = {}
+data.setdefault("projects", {}).setdefault(ws, {})["hasTrustDialogAccepted"] = True
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+PY
+done
+
 # The trader's LAB: its own interpreter, its own packages — the mission
 # grants it a python it may extend with pip. Seeded once with a starter
 # stack; from then on the agent owns it.

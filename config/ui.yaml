@@ -1,0 +1,40 @@
+# ============================================================
+# alpaca-mind — UI-manager instance config
+# A second agent whose whole job is the owner's window into the
+# trader: it constructs the interface after the trader's first
+# session, then evolves it as the trader lives. Deliberately cheap
+# minds — the deep tiers belong to the trader.
+# ============================================================
+
+role: ui
+
+paths:
+  workspace: /srv/ui/workspace
+  state: /srv/ui/workspace/state
+  ledger: /srv/ui/ledger.db          # the UI manager's own session record
+  logs: /srv/ui/logs
+  trader_ledger: /srv/mind/ledger.db # read-only: paces the UI to the trader
+  run_request: /srv/ui/app/data/run_request.json
+
+models:
+  default: opus
+  construct: opus
+  evolve: opus
+  effort:
+    default: medium
+    construct: high      # the first build sets the architecture — worth depth
+
+sessions:
+  max_turns: 600
+  default_wake_minutes: 240
+  max_sleep_hours: 24
+  min_wake_interval_minutes: 15
+  session_timeout_minutes: 120
+
+construct:
+  max_turns: 600
+  session_timeout_minutes: 180
+
+ui:
+  trader_sessions_per_run: 4   # evolve after every N trader sessions...
+  max_gap_hours: 12            # ...or after this long, if anything new ran

@@ -1,0 +1,68 @@
+# ============================================================
+# alpaca-mind — trader instance config
+# The engine reads this; the agent's own choices (schedule.json,
+# per-wake model/effort/charter) override the model defaults below.
+# ============================================================
+
+role: trader
+venue: alpaca
+
+paths:
+  workspace: /srv/mind/workspace
+  state: /srv/mind/workspace/state
+  ledger: /srv/mind/ledger.db
+  logs: /srv/mind/logs
+
+models:
+  # Fallback minds per run type — the agent's wake.json / schedule.json
+  # choices take precedence. Aliases resolve through the Claude CLI.
+  default: opus
+  session: opus
+  reflection: opus
+  research: opus
+  awakening: opus
+  effort:
+    default: high
+    reflection: xhigh
+    research: xhigh
+
+sessions:
+  max_turns: 600           # runaway backstop only — wall-clock timeouts
+                           # are the honest governor; a turn cap that
+                           # bites is a session cut off for being thorough
+  default_wake_minutes: 120
+  max_sleep_hours: 20
+  min_wake_interval_minutes: 10
+  session_timeout_minutes: 90
+  # Aliveness floor under agent-owned cadence: if NO reflection- or
+  # research-class session completes in this window, the engine fires
+  # one wake with an honest ENGINE BACKSTOP reason. Generous by design —
+  # it must never fight a deliberate cadence choice.
+  reflection_backstop_hours: 72
+  schedule_trust_ceiling_hours: 96
+
+reflection:
+  max_turns: 600
+  session_timeout_minutes: 180
+
+research:
+  max_turns: 600
+  session_timeout_minutes: 240
+
+# The ONLY bounds. Both are machine-failure protections, never judgment
+# constraints: HALT is the owner's kill switch (a file in state/);
+# orders/hour stops a crash loop from spamming the venue. Risk doctrine
+# belongs to the agent.
+bounds:
+  max_orders_per_hour: 60
+
+sentinel:
+  quote_poll_seconds: 15
+  balance_snapshot_minutes: 60
+  heartbeat_alarm_hours: 26
+
+scanners:
+  enabled: true
+  max_concurrent: 2
+  global_wake_budget_day: 8
+  max_wakes_per_day_cap: 4

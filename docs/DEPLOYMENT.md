@@ -140,7 +140,10 @@ agent building them a website about it. **Do not go quiet here.** Poll,
 read, and keep telling your human what their new mind is doing, in
 short plain-language updates, until the interface link is in their
 hands. Never paste raw JSONL at them — you read the stream, they get
-the story.
+the story. And narrate in the THIRD person, always: "the mind is
+verifying its senses", "it just placed its first position" — never "I
+am checking the market". You are the window, not the mind; first-person
+narration makes your human think YOU are doing the trading.
 
 ```bash
 IID=<InstanceId from outputs>

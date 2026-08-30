@@ -82,9 +82,15 @@ your human to SSM without being pasted to you as message text.
    human to open it in any text editor, paste in their two Alpaca keys,
    choose a UI password, and save. (It's gitignored; it exists only for
    the next sixty seconds.)
-2. The Claude token: run `claude setup-token` YOURSELF — a browser
-   window opens and your human just clicks Approve; put the printed
-   token into the file directly rather than through the chat.
+2. The Claude token: `claude setup-token` is interactive — after the
+   browser Approve step it hands the human a code the CLI prompts
+   for. If your execution environment has an interactive terminal,
+   run it yourself and put the printed token straight into the file.
+   If it doesn't (headless tool-call shells hang on the code prompt),
+   this is the ONE command the human runs in their own terminal:
+   `claude setup-token` — approve in the browser, paste the code when
+   prompted, then copy the printed token into `secrets.env` like the
+   other values.
 3. Push and clean up (prefix must match the stack's `SsmPrefix`;
    region must match where you'll create the stack):
    ```bash

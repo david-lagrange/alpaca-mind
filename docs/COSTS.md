@@ -12,6 +12,7 @@ pricing on the providers' sites when precision matters.*
 | EC2 t4g.large (2 vCPU / 8 GB, the default) | ~$49/mo on-demand |
 | EC2 t4g.medium (budget option, 4 GB) | ~$25/mo on-demand |
 | EBS 30 GB gp3 root volume | ~$3/mo |
+| S3 nightly backups (7-day rolling window, self-expiring) | well under $1/mo |
 | Everything else in the stack (VPC, SSM, security group) | $0 |
 
 t4g.large is the recommendation: the Next.js builds the UI manager

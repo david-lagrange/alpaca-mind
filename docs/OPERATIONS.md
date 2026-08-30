@@ -91,21 +91,55 @@ has its own systemd size caps — and survives even a broken file sink.
 | UI down | `systemctl status ui-web`; rebuild by hand as a last resort: `sudo -u ui bash -lc 'cd /srv/ui/app && npm run build' && systemctl restart ui-web` |
 | Anything weird after an instance reboot | services are `Restart=always` and enabled — `systemctl` the four units; state survives on disk |
 
-## Backups (the owner's choice — nothing is retained by default)
+## Backups (automatic, nightly, rolling 7 days)
 
-The removal-friendly design means NO automatic off-instance backups.
-For a mind whose evolution has become valuable, offer the owner a
-periodic **brain export** (also the first step of the removal
-protocol):
+Every night at midnight UTC, `mind-backup.timer` archives both agents'
+entire worlds — workspaces with their full git evolution history,
+journals, memory, Claude session state, transcripts and prompt
+snapshots, daily logs, the built UI app — plus consistent SQLite
+snapshots of every database, into the stack's private S3 bucket
+(`BackupBucketName` output). The bucket's lifecycle rule expires
+objects after 7 days, so the window rolls itself and the cost stays at
+pennies. Secrets are deliberately absent from every archive (.env and
+credential caches are excluded — SSM is their home).
+
+```bash
+aws s3 ls s3://<BackupBucketName>/backups/          # what exists
+run 'systemctl status mind-backup; journalctl -u mind-backup -n 10'
+run '/opt/alpaca-mind/backup.sh'                    # force one now
+```
+
+**Restore onto a fresh stack** (new instance, same or new stack name):
+1. Deploy the stack; wait for setup to finish; then stop the agents:
+   `run 'systemctl stop mind-supervisor mind-sentinel ui-supervisor ui-web'`
+2. Pull and unpack the chosen archive over the seeded state:
+   ```bash
+   run 'aws s3 cp s3://<bucket>/backups/<file>.tar.gz /tmp/b.tar.gz && \
+        tar xzf /tmp/b.tar.gz -C / srv/mind srv/ui && \
+        tar xzf /tmp/b.tar.gz -C /tmp db-snapshots'
+   ```
+3. Put the consistent databases back and fix ownership:
+   ```bash
+   run 'cp /tmp/db-snapshots/mind-ledger.db /srv/mind/ledger.db; \
+        cp /tmp/db-snapshots/ui-ledger.db /srv/ui/ledger.db 2>/dev/null; \
+        cp /tmp/db-snapshots/ui-app.db /srv/ui/app/data/ui.db 2>/dev/null; \
+        chown -R mind:mind /srv/mind; chown -R ui:ui /srv/ui; \
+        chgrp ledger-readers /srv/mind /srv/mind/ledger.db'
+   ```
+4. Rebuild the rebuildables, then start:
+   ```bash
+   run 'sudo -u ui bash -lc "cd /srv/ui/app && npm ci && npm run build"; \
+        systemctl start mind-supervisor mind-sentinel ui-supervisor ui-web'
+   ```
+   (The mind's lab venv recreates itself as the agent needs it;
+   `db-snapshots/lab-requirements.txt` lists what it had installed.)
+
+The manual **brain export** remains available anytime (also step one of
+the removal protocol):
 
 ```bash
 run 'tar czf /tmp/mind-brain.tar.gz -C /srv/mind workspace ledger.db logs'
-# then copy it off with S3 (any bucket of theirs) or scp-over-SSM
 ```
-
-A restore is the reverse: place the tarball's contents back under
-`/srv/mind` on a fresh deployment BEFORE first boot completes its
-seeding (or stop the services, restore, chown mind:mind, start).
 
 ## Upgrades
 

@@ -31,14 +31,21 @@ If yes: `HALT` first, then close each open position via the trade CLI
 as the `mind` user, then `trade reconcile` to confirm flat. (Paper
 accounts: closing is optional — simulated positions cost nothing.)
 
-## 4. Delete the stack (removes every AWS resource it created)
+## 4. Empty the backup bucket, then delete the stack
+
+S3 refuses to delete a non-empty bucket, so the nightly-backup bucket
+is emptied first (offer to copy the newest backup somewhere the human
+owns before this — it is a complete restorable mind):
 
 ```bash
+B=$(aws cloudformation describe-stacks --stack-name alpaca-mind \
+  --query "Stacks[0].Outputs[?OutputKey=='BackupBucketName'].OutputValue" --output text)
+aws s3 rm "s3://$B" --recursive
 aws cloudformation delete-stack --stack-name alpaca-mind
 aws cloudformation wait stack-delete-complete --stack-name alpaca-mind
 ```
 Every resource carries delete-on-removal by design: instance, volume,
-VPC, security group, IAM role, EIP if one was allocated.
+VPC, security group, IAM role, backup bucket, EIP if one was allocated.
 
 ## 5. Delete the secrets (SSM parameters survive stacks on purpose)
 

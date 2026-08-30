@@ -16,15 +16,21 @@ paths:
 models:
   # Fallback minds per run type — the agent's wake.json / schedule.json
   # choices take precedence. Aliases resolve through the Claude CLI.
-  default: opus
-  session: opus
-  reflection: opus
-  research: opus
-  awakening: opus
+  # The deepest available mind leads the prime sessions by default —
+  # the agent's judgment IS the product, and its fitness map already
+  # staffs mechanical legwork onto lighter subagents. Economy belongs
+  # in the delegation, not in the mind at the helm.
+  default: fable
+  session: fable
+  reflection: fable
+  research: fable
+  awakening: fable
   effort:
     default: high
+    awakening: xhigh
     reflection: xhigh
     research: xhigh
+    library: xhigh
 
 sessions:
   max_turns: 600           # runaway backstop only — wall-clock timeouts
@@ -33,7 +39,9 @@ sessions:
   default_wake_minutes: 120
   max_sleep_hours: 20
   min_wake_interval_minutes: 10
-  session_timeout_minutes: 90
+  session_timeout_minutes: 120   # a deep default mind thinks longer;
+                                 # the timeout is a hang guard, not a
+                                 # thoroughness cap
   # Aliveness floor under agent-owned cadence: if NO reflection- or
   # research-class session completes in this window, the engine fires
   # one wake with an honest ENGINE BACKSTOP reason. Generous by design —
@@ -48,6 +56,10 @@ reflection:
 research:
   max_turns: 600
   session_timeout_minutes: 240
+
+library:
+  max_turns: 600
+  session_timeout_minutes: 180
 
 # The ONLY bounds. Both are machine-failure protections, never judgment
 # constraints: HALT is the owner's kill switch (a file in state/);

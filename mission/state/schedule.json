@@ -1,6 +1,15 @@
 {
-  "_ownership": "MINE. My recurring cadence: reflection, research, any run type I invent. Slots fire due-until-consumed (a busy stretch delays a slot, never eats it; a killed session doesn't consume). Each slot may carry run_type, days, at_local_time, timezone, model, effort, charter, reason. A malformed slot is skipped; a malformed file means the engine's aliveness floor only. One-shot wakes live in state/wake.json. These seeds are a starting rhythm, not a rule — every line is mine to change from my first session on.",
+  "_ownership": "MINE. My recurring cadence: reflection, research, any run type I invent. Slots fire due-until-consumed (a busy stretch delays a slot, never eats it; a killed session doesn't consume). Each slot may carry run_type, days, at_local_time, timezone, model, effort, charter, reason. A malformed slot is skipped; a malformed file means the engine's aliveness floor only. One-shot wakes live in state/wake.json. These seeds are a starting rhythm, not a rule — every line is mine to change from my first session on. The slots marked first-week scaffolding exist so my first days have a heartbeat before I've found my own; each one earns its permanent place in my rhythm or I delete it.",
   "slots": [
+    {
+      "name": "preopen",
+      "run_type": "session",
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "at_local_time": "09:10",
+      "timezone": "America/New_York",
+      "effort": "xhigh",
+      "reason": "pre-open briefing — overnight tape, futures, the day's calendar, my book's exposure to all of it; plan the day before the bell (first-week scaffolding; mine to keep, reshape, or delete)"
+    },
     {
       "name": "reflection",
       "run_type": "reflection",
@@ -10,6 +19,16 @@
       "effort": "xhigh",
       "charter": "prompts/REFLECTION.md",
       "reason": "scheduled reflection — grade the day's decisions while the tape is fresh (seeded rhythm; mine to change)"
+    },
+    {
+      "name": "library",
+      "run_type": "library",
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "at_local_time": "20:30",
+      "timezone": "America/New_York",
+      "effort": "xhigh",
+      "charter": "prompts/LIBRARY.md",
+      "reason": "nightly library hour — study, explore, build capability while the market sleeps (first-week scaffolding; mine to keep, reshape, or delete)"
     },
     {
       "name": "research",

@@ -92,6 +92,17 @@ Parameters:
       host to the Next.js app (which listens on an unprivileged port), so the
       app never needs root or extra capabilities.
 
+  UiPublicMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >-
+      "true" opens the interface read-only to anyone (a showcase
+      deployment), keeping the inbox and every mutating action behind the
+      UI password. Default "false" gates the whole app.
+
   AllocateElasticIp:
     Type: String
     Default: "false"
@@ -405,6 +416,7 @@ Resources:
             export UI_PORT="${UiPort}"
             export AWS_REGION="${AWS::Region}"
             export BACKUP_BUCKET="${BackupBucket}"
+            export UI_PUBLIC="${UiPublicMode}"
             bash /opt/alpaca-mind-src/deploy/setup.sh
 
   # Optional stable address. An Elastic IP associated with a running instance

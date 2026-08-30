@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Whole-app HTTP Basic Auth gate.
+ * HTTP Basic Auth gate.
  *
- * This UI runs on a host that may be exposed to the public internet, so
- * every route — pages, API routes, and assets alike — sits behind a single
- * credential by design. There are no anonymous surfaces: anything the app
+ * Default: every route — pages, API routes, and assets alike — sits behind
+ * a single credential. There are no anonymous surfaces: anything the app
  * can show (account state, trade history, agent activity) is for the owner
  * only.
+ *
+ * Showcase mode (UI_PUBLIC=true): the read-only site is open to anyone —
+ * for deployments the owner wants to show the world — while everything
+ * that STEERS stays gated: the inbox (page and API, reads included; the
+ * owner's requests are theirs) and every mutating request, whichever
+ * route carries it. Method-based gating covers routes that don't exist
+ * yet — the interface grows itself, and a future POST must not be born
+ * open.
  *
  * Username is fixed ("owner"); the password comes from the UI_PASSWORD
  * environment variable. If that variable is unset the app refuses to serve
  * at all (503) rather than falling open — an unconfigured deployment must
- * never be an unprotected one.
+ * never be an unprotected one, in either mode.
  */
 
 const REALM = "alpaca-mind";
@@ -87,6 +94,20 @@ export function middleware(request: NextRequest): NextResponse {
   const password = process.env.UI_PASSWORD;
   if (!password) {
     return notConfigured();
+  }
+
+  if (process.env.UI_PUBLIC === "true") {
+    const method = request.method.toUpperCase();
+    const safeMethod =
+      method === "GET" || method === "HEAD" || method === "OPTIONS";
+    const path = request.nextUrl.pathname;
+    const inboxSurface =
+      path === "/inbox" ||
+      path.startsWith("/inbox/") ||
+      path.startsWith("/api/inbox");
+    if (safeMethod && !inboxSurface) {
+      return NextResponse.next();
+    }
   }
 
   const header = request.headers.get("authorization") ?? "";

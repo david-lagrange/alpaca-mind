@@ -227,6 +227,7 @@ After editing code:
 | Variable | Purpose | Default |
 | --- | --- | --- |
 | `UI_PASSWORD` | Basic Auth password (user `owner`); app serves 503 without it | — |
+| `UI_PUBLIC` | `"true"` = showcase mode: read-only site open to anyone; inbox + all mutating requests still require auth | `false` |
 | `UI_DB_PATH` | The UI's own SQLite database | `./data/ui.sqlite` |
 | `LEDGER_PATH` | The trading engine's ledger (read-only) | — |
 | `UI_RUN_REQUEST_PATH` | Immediate-run marker file | `./data/run_request.json` |

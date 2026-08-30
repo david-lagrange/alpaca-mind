@@ -26,6 +26,16 @@ The web app sits behind HTTP Basic Auth over EVERY route (user
 serves a 503 rather than running open. The security group opens ONLY
 the UI port; all management is SSM Session Manager (no SSH, no keys).
 
+**Showcase mode** (stack parameter `UiPublicMode=true`): for owners who
+WANT the world watching, the read-only site opens to anyone while the
+steering surfaces stay gated — the inbox (page and API, reads included)
+and every mutating request, on any route, current or future
+(method-based gating, so pages the UI manager builds later inherit the
+rule). Nothing the read-only site can show is a secret by construction
+— logs, journals, and pages carry no credentials — but it does expose
+the account's positions and P&L to anyone with the URL: a deliberate
+choice for a public demonstration, not a default.
+
 ## The inbox threat model (read this one carefully)
 
 Inbox messages are OWNER TEXT that becomes UI-MANAGER WORK — that is

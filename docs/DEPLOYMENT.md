@@ -109,31 +109,73 @@ aws cloudformation describe-stacks --stack-name alpaca-mind \
   --query 'Stacks[0].Outputs' --output table
 ```
 
-## 4. Watch it come alive (SSM Session Manager — no SSH anywhere)
+## 4. Watch it come alive — and NARRATE it (SSM — no SSH anywhere)
+
+What happens next is the best part of this deployment, and your human
+should get to watch it through you: an agent waking up for the first
+time, meeting the market, taking its first position — then a second
+agent building them a website about it. **Do not go quiet here.** Poll,
+read, and keep telling your human what their new mind is doing, in
+short plain-language updates, until the interface link is in their
+hands. Never paste raw JSONL at them — you read the stream, they get
+the story.
 
 ```bash
 IID=<InstanceId from outputs>
-aws ssm start-session --target $IID    # interactive shell, or:
-aws ssm send-command --instance-ids $IID --document-name AWS-RunShellScript \
-  --parameters commands='tail -40 /var/log/alpaca-mind-setup.log'
+run() { aws ssm send-command --instance-ids $IID \
+  --document-name AWS-RunShellScript --parameters commands="$1" \
+  --query Command.CommandId --output text; }
+# fetch a result: aws ssm get-command-invocation --command-id <id> \
+#   --instance-id $IID --query StandardOutputContent --output text
 ```
-Setup ends with a completion banner. Then verify, in order:
-1. `systemctl is-active mind-supervisor mind-sentinel ui-supervisor ui-web`
-   → four × `active`.
-2. `journalctl -u mind-supervisor -n 20` → a `launch awakening` line,
-   then `session done exit=0` (the trader's first session takes a few
-   minutes — it is meeting the world).
-3. After the awakening completes, `journalctl -u ui-supervisor -n 20`
-   → `launch construct` (the UI manager building the first interface;
-   this pass runs long — it is designing, building, and verifying a
-   site).
-4. Open `http://<PublicIp>/` → Basic Auth (user `owner`, the UI
-   password) → first the "awakening" landing page, then the
-   constructed interface once the UI pass finishes and restarts the
-   site.
+
+1. **Boot**: `run 'tail -40 /var/log/alpaca-mind-setup.log'` until the
+   completion banner, then
+   `run 'systemctl is-active mind-supervisor mind-sentinel ui-supervisor ui-web'`
+   → four × `active`. Tell your human the machine is up and the mind
+   is about to wake.
+
+2. **The awakening — live narration.** The trader's session writes a
+   full transcript as it thinks. Every ~30 seconds, read what's new
+   and tell your human what the mind is doing right now:
+   ```bash
+   run 'F=$(ls -t /srv/mind/logs/sessions/*.jsonl | head -1); \
+        python3 /opt/alpaca-mind/engine/render_transcript.py "$F" | tail -60'
+   ```
+   Track where your last update ended and narrate only what's new:
+   "it's verifying its senses — account, quotes, an options chain",
+   "it's surveying the market and writing its first strategy note",
+   "it just placed its first position: <what it did>", "it's arming
+   tripwires and scheduling its own next wake". The structured log
+   (`run "tail -20 /srv/mind/logs/daily/$(date -u +%F).jsonl"`) shows
+   the lifecycle events (`session_launch`, `order_placed`,
+   `session_finish`). The awakening runs several minutes — that is a
+   mind meeting the world; keep the updates coming until
+   `session_finish` appears.
+
+3. **First construction — same protocol.** The UI manager launches
+   after the awakening completes (`journalctl -u ui-supervisor` shows
+   `launch construct`; its transcripts live in
+   `/srv/ui/logs/sessions/`). Poll and narrate the same way, every
+   ~30 seconds: "it's reading the trader's first journal", "it's
+   designing the dashboard", "it's building and verifying every
+   route". This pass runs LONG — it is designing, building, testing,
+   and mobile-checking a real website; say so, so the wait reads as
+   craft rather than silence.
+
+4. **The reveal.** When the construct session finishes and the site
+   restarts, poll the URL until it answers:
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}' http://<PublicIp>/
+   ```
+   `401` means it's up (Basic Auth is working); confirm content with
+   `curl -s -u owner:<UI_PASSWORD> http://<PublicIp>/ | head -40`.
+   Only then hand your human the link — with the story of what was
+   just built for them.
 
 If anything fails: the setup log names the step; OPERATIONS.md has the
-diagnostic patterns.
+diagnostic patterns, and the daily JSONL logs (`/srv/mind/logs/daily/`,
+`/srv/ui/logs/daily/`) explain any component's behavior.
 
 ## 5. Hand over
 

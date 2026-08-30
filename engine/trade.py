@@ -670,6 +670,12 @@ def main() -> None:
     evp.add_argument("--kind")
     evp.add_argument("--limit", type=int, default=50)
 
+    # `trade notify` is the agent's one-command bridge to the owner's
+    # window: it records an event the interface manager wakes on. The
+    # summarizing is the manager's job — the agent just rings.
+    nf = sub.add_parser("notify")
+    nf.add_argument("message", nargs="?", default=None)
+
     rv = sub.add_parser("reviewed")
     rv.add_argument("trade_id", type=int)
 
@@ -767,6 +773,14 @@ def main() -> None:
             rows = ledger.query(sql, tuple(params))
             out({"window_minutes": args.minutes, "count": len(rows),
                  "events": rows})
+        elif args.cmd == "notify":
+            ledger.record_event(
+                "trader", "notify",
+                {"message": args.message} if args.message else None)
+            log.info("notify", message=args.message)
+            out({"ok": True,
+                 "note": "the interface manager will pick this up once "
+                         "this session ends"})
         elif args.cmd == "reviewed":
             rows = ledger.query(
                 "SELECT id, symbol, status, reviewed FROM trades WHERE id=?",

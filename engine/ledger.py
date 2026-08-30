@@ -354,7 +354,24 @@ class Ledger:
             f"AND ts_end > ? {excl}", tuple(params))
         return rows[0]["c"] if rows else 0
 
+    def has_open_session(self, since: float) -> bool:
+        """A session started after `since` and not yet finalized. The
+        time bound matters: a crash can orphan a NULL ts_end row, and a
+        stale orphan must never read as 'still running' forever."""
+        rows = self.query(
+            "SELECT COUNT(*) c FROM sessions "
+            "WHERE ts_end IS NULL AND ts_start > ?", (since,))
+        return bool(rows and rows[0]["c"])
+
     # -- events -----------------------------------------------------------
+
+    def notify_events_since(self, ts: float) -> list[dict]:
+        """The agent's rung notify events after a timestamp — the
+        interface manager's wake bell (detail carries the optional
+        message), oldest first."""
+        return self.query(
+            "SELECT ts, detail FROM events "
+            "WHERE kind='notify' AND ts > ? ORDER BY ts", (ts,))
 
     def record_event(self, source: str, kind: str, detail: Any = None) -> None:
         self._insert("events", {

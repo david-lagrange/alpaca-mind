@@ -385,8 +385,12 @@ class Supervisor:
         """The UI manager's pace is the TRADER's pace. Genesis: construct
         the interface once the trader has at least one completed session
         (so the constructor builds from a real transcript, not just the
-        mission text). Steady state: evolve after every N trader
-        sessions, or immediately when the owner's inbox requests a run."""
+        mission text). Steady state, in priority order: the owner's
+        run-now request; the trader's own bell (`trade notify` events —
+        serviced once the trader's session closes, so the manager reads
+        finished journals, never half-written ones); and the
+        session-count / max-gap cadence as the floor for a trader that
+        never rings."""
         if not self.trader_ledger:
             return None
         last = self.ledger.last_session_ts() or 0
@@ -428,6 +432,37 @@ class Supervisor:
         last_ui_end = float(self.ledger.query(
             "SELECT MAX(ts_end) t FROM sessions WHERE ts_end IS NOT NULL"
         )[0]["t"] or 0)
+
+        # The trader's bell: any notify event newer than the last
+        # finished interface pass. Held while a trader session is still
+        # open — the burst of rings from one session collapses into one
+        # manager run that reads the finished story.
+        notifies = self.trader_ledger.notify_events_since(last_ui_end)
+        if notifies:
+            if self.trader_ledger.has_open_session(
+                    since=time.time() - 6 * 3600):
+                self.log.debug("notify_hold_trader_session_open",
+                               pending=len(notifies))
+            else:
+                msgs = []
+                for n in notifies[-5:]:
+                    d = n.get("detail")
+                    if isinstance(d, str):
+                        try:
+                            d = json.loads(d)
+                        except ValueError:
+                            d = None
+                    m = d.get("message") if isinstance(d, dict) else None
+                    if m:
+                        msgs.append(str(m)[:200])
+                self.log.info("notify_wake", pending=len(notifies),
+                              messages=msgs)
+                return ("evolve", {"reason": (
+                    f"TRADER NOTIFY: the trader rang {len(notifies)} "
+                    "time(s) since the last interface pass"
+                    + (" — " + " | ".join(msgs) if msgs else "")
+                    + ". Read what happened; update the window.")})
+
         new_trader = self.trader_ledger.count_finished_since(last_ui_end)
         every_n = int(self.cfg.get("ui", {}).get("trader_sessions_per_run", 4))
         max_gap_h = float(self.cfg.get("ui", {}).get("max_gap_hours", 12))

@@ -70,9 +70,49 @@ against the engine's schema (documented in that file). Every helper
 degrades to empty/null when the ledger does not exist yet — always render
 a sensible empty state.
 
-**Live account — `lib/alpaca.ts`.** `getAccount()` and `getPositions()`,
-both returning `null` on missing credentials or network failure. Same
-rule: optional-render, never crash on `null`.
+**Live account & market data — `lib/alpaca.ts`.** `getAccount()` and
+`getPositions()` ship as the starting pattern, both returning `null` on
+missing credentials or network failure. Same rule: optional-render,
+never crash on `null`.
+
+**This library is yours to EXTEND — and live views are expected.** The
+server env carries the Alpaca keys (read use); the two API hosts are:
+
+- `https://paper-api.alpaca.markets` (or `https://api.alpaca.markets`
+  when `ALPACA_PAPER` is `"false"`) — account, positions, open orders,
+  the market clock: the ACCOUNT surface. Read-only endpoints only.
+- `https://data.alpaca.markets` — the MARKET surface: latest stock
+  quotes/trades (`/v2/stocks/quotes/latest?symbols=…`), snapshots
+  (`/v2/stocks/snapshots`), bars, movers
+  (`/v1beta1/screener/stocks/movers`), news (`/v1beta1/news`), and
+  options chains with greeks
+  (`/v1beta1/options/snapshots/{underlying}?feed=indicative`).
+
+Auth = two headers on every request: `APCA-API-KEY-ID` and
+`APCA-API-SECRET-KEY` (see the existing helpers). Add typed helpers
+here per endpoint you need; keep every one a GET.
+
+**The living-component pattern.** You run occasionally; what you build
+runs continuously — so a dashboard should be ALIVE between your runs,
+not a snapshot of your last visit. The convention:
+
+1. A server API route per live view (e.g. `app/api/live/positions/
+   route.ts`) that calls your `lib/alpaca.ts` helper per request and
+   returns compact JSON. Mark it `export const dynamic =
+   "force-dynamic"` so nothing caches.
+2. A small client component (`"use client"`) that fetches that route on
+   an interval and renders with honest loading/stale/error states. Keep
+   intervals modest — **5–15s for quotes and positions during market
+   hours, 30–60s otherwise** (check `/v2/clock` once and let the
+   component slow itself down when the market is closed). Pause polling
+   when `document.hidden`.
+3. Show data age ("as of 12s ago") whenever a value can be stale —
+   a live number with no timestamp is a quiet lie.
+
+Never call Alpaca from the browser directly (that would need the keys
+client-side); the server route is the boundary. Build live tickers,
+position P&L that breathes, chain views, whatever the story needs —
+liveness is a feature the owner should feel.
 
 **API routes.** Follow `app/api/inbox/route.ts` as the template: validate
 every input (type, length, range) before touching the database, return
@@ -153,6 +193,25 @@ After editing code:
 | `ALPACA_API_KEY` | Brokerage API key, e.g. `<YOUR_ALPACA_KEY>` | — |
 | `ALPACA_SECRET_KEY` | Brokerage API secret, e.g. `<YOUR_ALPACA_SECRET>` | — |
 | `ALPACA_PAPER` | `"true"` targets the paper API, else live | `true` |
+
+**Where these live on a deployment.** The source of truth is
+`/srv/ui/.env` (owner-only, mode 600). systemd loads it into BOTH the
+web server (`ui-web.service`) and your own agent sessions
+(`ui-supervisor.service`) — so `process.env` in server code and
+`$VARIABLE` in your shell both already have everything above. Deployed
+values point `LEDGER_PATH` at the trader's ledger and the data paths at
+`./data/` inside this app. To hand-test the built server on a spare
+port before requesting a restart:
+
+```bash
+set -a; . /srv/ui/.env; set +a
+PORT=3100 node .next/standalone/server.js   # then curl your routes
+```
+
+Never print these values into logs, transcripts, commits, or the UI.
+Paths that are NOT env vars (plain read-only filesystem access): the
+trader's journals at `/srv/mind/workspace/journal/` and its session
+transcripts at `/srv/mind/logs/sessions/`.
 
 ## Quality bar
 

@@ -12,8 +12,10 @@ so you know WHO you are portraying, then its transcripts so far
 Build the base experience — what a great first window shows (yours to
 design; these are the questions it must answer, not a page list):
 
-- What is this thing, and what is it doing right now? (identity,
-  live account state, open positions with theses, next wake)
+- What is this thing, and what is it doing right now? (identity, LIVE
+  account state and open positions with theses — built as living
+  components per UI_GUIDE's pattern, polling between your runs, not
+  frozen at construction time — plus next wake)
 - What has it done? (sessions timeline; trades with entry/exit/thesis/
   reason; honest P&L)
 - What is it thinking? The trader's `journal/` is its OWN narrative of

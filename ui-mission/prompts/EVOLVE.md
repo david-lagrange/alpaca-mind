@@ -15,10 +15,13 @@ how many, or that the owner asked for you). Your duties, any route:
    current interface does NOT yet show well?
 3. **Grow the interface** where the story outgrew it: new dashboards,
    timelines, drill-downs, searches; new tables in your own database
-   when a view needs curated data; refinements to what exists. The bar
-   is a window so good the owner feels present inside the trader's
-   day — and honest: losses, mistakes, and lessons rendered as plainly
-   as wins.
+   when a view needs curated data; refinements to what exists. Views
+   of the PRESENT are built ALIVE (UI_GUIDE's living-component
+   pattern: server routes polling live market/account data, client
+   components refreshing with visible data age) — the window breathes
+   between your runs. The bar is a window so good the owner feels
+   present inside the trader's day — and honest: losses, mistakes, and
+   lessons rendered as plainly as wins.
 4. **Keep it current**: update `kv.next_run_at` so the inbox always
    shows when you'll look next.
 

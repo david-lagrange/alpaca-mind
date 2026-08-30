@@ -80,7 +80,15 @@ def load_config() -> dict:
 
 
 def out(data) -> None:
-    print(json.dumps(data, indent=2, default=str))
+    try:
+        print(json.dumps(data, indent=2, default=str))
+    except BrokenPipeError:
+        # The reader closed the pipe (`trade chain | head`) after taking
+        # what it needed. The unix convention is a quiet exit — not a
+        # stack trace and a false error event over a satisfied consumer.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(0)
 
 
 def fail(msg: str, **extra) -> None:

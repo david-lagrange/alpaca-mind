@@ -46,7 +46,12 @@ class Venue:
         self.paper = os.environ.get("ALPACA_PAPER", "true").lower() != "false"
         self.api_base = ("https://paper-api.alpaca.markets" if self.paper
                          else "https://api.alpaca.markets")
-        self.options_feed = os.environ.get("ALPACA_OPTIONS_FEED", "indicative")
+        # Unset by default: omitting the feed parameter lets the venue
+        # serve the account's entitled options feed, which includes
+        # greeks — explicitly forcing the indicative feed has been
+        # observed to return null greeks the entitled default provides.
+        # Set ALPACA_OPTIONS_FEED to pin a specific feed deliberately.
+        self.options_feed = os.environ.get("ALPACA_OPTIONS_FEED") or None
         # Constructed here, not at import: the entry point sets JSONLOG_DIR
         # from its config after imports resolve, and the logger reads the
         # environment when it is created.
@@ -256,10 +261,9 @@ class Venue:
                      strike_gte: float | None = None,
                      strike_lte: float | None = None,
                      contract_type: str | None = None) -> list[dict]:
-        """Chain snapshots with quotes and greeks for an underlying.
-        Uses the configured options feed; the free indicative feed serves
-        model-derived quotes/greeks, which is sufficient for decisioning
-        on liquid names."""
+        """Chain snapshots with quotes and greeks for an underlying,
+        on the account's entitled feed unless ALPACA_OPTIONS_FEED pins
+        one."""
         out: list[dict] = []
         params = {"feed": self.options_feed,
                   "type": contract_type,

@@ -210,9 +210,10 @@ Tell your human, in your own words, all five of:
 2. **The kill switch** — one command stops all trading instantly:
    `aws ssm send-command --instance-ids <IID> --document-name AWS-RunShellScript --parameters commands='sudo -u mind touch /srv/mind/workspace/state/HALT'`
    (remove the file to resume).
-3. **The domain offer** — if they want `mind.theirdomain.com`: point
-   an A record at the public IP, then put a TLS proxy (e.g. Caddy) in
-   front, or an ALB + ACM certificate. Offer to do it; it is optional.
+3. **The domain offer** — a real address with automatic HTTPS is a
+   ~10-minute upgrade; OPERATIONS.md's "Adding a domain" section is
+   the exact procedure (Elastic IP first, then DNS, then Caddy).
+   Offer to do it; it is optional.
 4. **The safety net** — every night the mind's entire evolved self is
    backed up to the stack's own private S3 bucket on a self-expiring
    7-day window; if the instance ever breaks, the mind is a short

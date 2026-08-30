@@ -72,6 +72,61 @@ safety bounds. When diagnosing anything, start there.
 | UI down | `systemctl status ui-web`; rebuild by hand as a last resort: `sudo -u ui bash -lc 'cd /srv/ui/app && npm run build' && systemctl restart ui-web` |
 | Anything weird after an instance reboot | services are `Restart=always` and enabled — `systemctl` the four units; state survives on disk |
 
+## Adding a domain (and HTTPS)
+
+The offered final step of a deployment, in the order that makes it
+durable. Total time ~10 minutes; certificates are automatic.
+
+1. **Pin the address first.** The default deployment uses an
+   auto-assigned public IP that changes on stop/start — a DNS record
+   pointing at it would rot. Update the stack:
+   ```bash
+   aws cloudformation deploy --stack-name <stack> \
+     --template-file deploy/cloudformation.yaml \
+     --capabilities CAPABILITY_IAM \
+     --parameter-overrides AllocateElasticIp=true <your other overrides>
+   ```
+   This is an additive update (the instance is not replaced), but the
+   public IP CHANGES to the new Elastic IP — read it from the stack's
+   `PublicIp` output. Pass every parameter override you deployed with
+   originally (e.g. `UiPublicMode`), or defaults reassert themselves.
+2. **Point DNS at it.** An `A` record for the apex (and `www` if
+   wanted) → the Elastic IP, at the human's registrar or Route 53.
+   TTL 300 is fine.
+3. **Put Caddy in front** (on the instance, via SSM). Caddy provisions
+   and renews Let's Encrypt certificates automatically; port 443 is
+   already open in the security group. The one subtlety: the default
+   deployment redirects port 80 to the app with an iptables rule, and
+   Caddy needs to OWN 80/443 — disable the redirect and clear its rule:
+   ```bash
+   apt-get install -y caddy
+   systemctl disable --now ui-port-redirect.service
+   while read -r rule; do iptables -t nat $(echo "$rule" | sed 's/^-A/-D/'); done \
+     < <(iptables -t nat -S PREROUTING | grep -- '--dport 80' || true)
+   cat > /etc/caddy/Caddyfile <<'EOF'
+   <the.domain>, www.<the.domain> {
+       reverse_proxy 127.0.0.1:3000
+   }
+   http:// {
+       redir https://<the.domain>{uri} permanent
+   }
+   EOF
+   systemctl enable --now caddy && systemctl restart caddy
+   ```
+   The `http://` catch-all bounces old bare-IP links to the real
+   address. (apt's needrestart may bounce agent services during the
+   install — harmless between sessions; check nothing was mid-session
+   first, like any engine update.)
+4. **Verify from outside:** the domain resolves to the Elastic IP;
+   `https://` serves 200 with a valid certificate; `http://` redirects;
+   the app's auth behavior is unchanged (Basic Auth sits behind the
+   proxy untouched). Certificate renewal is Caddy's job forever.
+
+Removal note: the Elastic IP is a stack resource (deletes with the
+stack); the DNS records and Caddy die with the zone and instance
+respectively — nothing here outlives the removal protocol except the
+domain registration itself, which belongs to the human.
+
 ## Backups (automatic — the mind survives its hardware)
 
 Nightly at 00:00 UTC, the whole of both agents' worlds — workspaces

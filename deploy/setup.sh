@@ -47,6 +47,7 @@ ENGINE_HOME=/opt/alpaca-mind
 SSM_PREFIX="${SSM_PREFIX:-${SAVED_SSM_PREFIX:-/alpaca-mind}}"
 CLAUDE_CLI_VERSION="${CLAUDE_CLI_VERSION:-${SAVED_CLAUDE_CLI_VERSION:-2.1.238}}"
 UI_PORT="${UI_PORT:-${SAVED_UI_PORT:-80}}"
+BACKUP_BUCKET="${BACKUP_BUCKET:-${SAVED_BACKUP_BUCKET:-}}"
 UI_APP_PORT=3000   # unprivileged port the Next.js server binds; UI_PORT is redirected to it
 
 log() { echo "[alpaca-mind setup] $*"; }
@@ -482,6 +483,7 @@ SAVED_SSM_PREFIX=${SSM_PREFIX}
 SAVED_CLAUDE_CLI_VERSION=${CLAUDE_CLI_VERSION}
 SAVED_UI_PORT=${UI_PORT}
 SAVED_AWS_REGION=${AWS_REGION}
+SAVED_BACKUP_BUCKET=${BACKUP_BUCKET}
 EOF
 chmod 644 /etc/default/alpaca-mind-setup
 

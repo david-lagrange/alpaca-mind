@@ -253,6 +253,14 @@ Resources:
             Ref: UiPort
           CidrIp: 0.0.0.0/0
           Description: Public UI (app enforces Basic Auth)
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: >-
+            HTTPS, for owners who front the UI with a domain and TLS
+            (docs/OPERATIONS.md). Nothing listens here until one is set
+            up, so the open port is inert on a default deployment.
       SecurityGroupEgress:
         - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0

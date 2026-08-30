@@ -25,6 +25,15 @@ run() { aws ssm send-command --instance-ids $IID \
    pair with `session_finish exit_code=0` (or read the same stream
    with filters on the UI's Logs page).
 
+## Before you change anything an agent reads
+
+Any edit to a mission file, a charter, or any text that enters an
+agent's context — whether at deploy time, from an owner request, or in
+day-2 tuning — goes through **PROMPTING.md** first. Its first law is
+the one to hold hardest: a suggestion becomes an instruction, a list
+becomes a map, and the fastest way to damage a free mind is to help it
+with examples.
+
 ## The owner's controls
 
 - **Kill switch (stop all trading):**

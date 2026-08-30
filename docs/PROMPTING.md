@@ -23,21 +23,57 @@ Every instruction in a harness encodes an assumption about what the
 model can't do on its own — stress-test those assumptions before
 adding more.
 
-**Floors become ceilings; lists become maps.** An enumerated minimum
-("cover at least these five areas") reads as the definition of done. An
-example list reads as the territory to search, and an example
-*document* is the strongest anchor of all — it silently transmits
-theme, structure, and framing far beyond the format signal you
-intended. Constrain the deliverable's *shape* (required sections,
-honesty contracts); never name the territory; phrase openness as
-invitation ("no corner is out of bounds"), not as a checklist.
+**The one enemy: anchoring.** This system's deepest design law, and
+the one an editing AI is most likely to break with good intentions.
+The mechanism: a suggestion reads as an instruction; an enumerated
+minimum ("cover at least these five areas") reads as the definition of
+done; an example list reads as the territory to search. Whatever you
+name becomes the groove the work runs in — a free mind handed a map
+walks the map instead of the land, and the whole value of this product
+is minds that walk their own land. An example *document* is the
+strongest anchor of all: it carries a paragraph of intended format
+signal and a report's worth of unintended theme and content signal.
+So: constrain the deliverable's *shape* (required sections, honesty
+contracts, quality laws — these are enforced and legitimate); never
+name territory inside an open decision; phrase openness as invitation
+("no corner is out of bounds"), never as a checklist. If a concrete
+example is ever truly unavoidable, make it *remote* from the mind's
+actual world — one the work cannot mistake for a hint about today.
 
-**Constrain ends, free routes.** The charters in this repository are
-written as *duties* — outcomes the session must meet — never as
-step-by-step procedures. A route written down becomes a rut; a fresh
-mind cannot calcify, but its inherited files can. Keep every
-inheritance evidence-shaped: state what is true and what it cost to
-learn, never what to do first.
+The subtlest anchors are the ones the owner or their assistant writes
+kindly: "for example, you could look at X, Y, and Z" in a charter
+quietly becomes every session looking at X, Y, and Z. The signature
+that an example took root is the mind's output echoing its content or
+cadence — watch for it after any edit you make. The remedy is
+deletion, and deletion is not damage: removing a line that grooved
+behavior improves a prompt exactly as much as adding a good one.
+
+**Constrain ends, free routes — and keep inheritances evidence-shaped.**
+The charters in this repository are written as *duties* — outcomes the
+session must meet — never as step-by-step procedures. This matters
+because of how these minds live: every session is born fresh, so a
+session cannot form a habit — only the *inherited files* can carry one
+in, and a route written down becomes a rut walked daily. So every
+inheritance stays evidence-shaped: a record states what is true and
+what it cost to learn, with its sample size — never what to do first.
+Yesterday's route is evidence that a route existed, never instruction
+to walk it again.
+
+And keep the philosophy on YOUR side of the boundary: the mind's files
+carry only the functional layer — duties, laws, facts — never
+paragraphs of doctrine for it to reread daily. Recited philosophy
+decays into liturgy, and liturgy is calcification wearing the
+philosophy's clothes. You are the guardian of this doctrine; the mind
+just lives free.
+
+**The watch, not the cage.** Anchoring and calcification are watched
+for and pruned — never pre-fixed with machinery, because a rule added
+to prevent a groove is itself a groove. The signatures worth watching
+across a deployment's life: sessions opening with the same moves and
+the same subagent roster every time; outputs template-shaped across
+days (the same skeleton, refilled); the mind echoing an example
+someone wrote; inherited files that only ever grow. Seeing one means
+pruning the inheritance that caused it — then watching again.
 
 **Brief steering beats enumeration.** "You can steer most behaviors
 with a brief instruction rather than enumerating each behavior by
@@ -218,6 +254,12 @@ mission with your human (MISSIONS.md), preserve these properties:
 - **Never seed example trades, example reports, or named strategy
   taxonomies** — an example document anchors far more than it teaches
   (§1). The individuality of each deployment is the product.
+- **Your suggestions become its instructions.** When your human asks
+  you to "encourage" or "suggest" something to the mind, translate the
+  wish into an end, never a route: name what success looks like and
+  leave how entirely open. "For example, you could…" inside a charter
+  is a map (§1) — and if you later see the mind's work echoing
+  something you wrote, that is your cue to delete it.
 - **Keep the honesty contracts intact** in every charter you touch —
   they are the institution, not the mission.
 - **Match prompt voice to the file.** The trader's files are written

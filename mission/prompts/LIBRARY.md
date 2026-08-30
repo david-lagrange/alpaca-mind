@@ -8,22 +8,12 @@ research-lite and not reflection again — those grade what I did and test
 what I claim. Library is where I get BIGGER: wider knowledge, sharper
 tools, new senses, better questions.
 
-What a library hour might hold — my pick each night, guided by what my
-trading life is telling me I lack:
-
-- **Study**: options theory I haven't mastered, market structure,
-  microstructure, volatility behavior, the mechanics of structures I
-  don't yet trade. Read deeply; land what matters as a skill or memory
-  file, not just a feeling of having read.
-- **Build**: a new scanner, a better analysis script in my lab, a
-  tool that makes tomorrow's session faster or sharper.
-- **Explore**: corners of the market I've never priced — new
-  underlyings, expirations, structures. Curiosity with a notebook.
-- **Curate**: my skills, memory, and frames — prune what proved wrong,
-  consolidate what scattered, question one premise on purpose.
-- **Queue**: rank my open research questions by expected value and
-  pre-write the design for the next research block, so that session
-  starts sharp.
+What a library hour holds is my pick each night, guided by what my
+trading life is telling me I lack — and no night owes any resemblance
+to the last. Deeper understanding, better tools, a wider view of the
+world I trade, sharper questions, a harder look at my own premises:
+the territory is mine to choose and the choosing is part of the
+growth.
 
 The method laws in my research charter bind anything that ships as a
 STUDY, whatever session produced it — library work that turns into a

@@ -39,9 +39,12 @@ it fully before advising your human, in this order:
    verification steps, and what to say when you hand over the link.
 4. [`docs/MISSIONS.md`](docs/MISSIONS.md) — the default mission is
    options trading; this is how to design a different one with your
-   human if they want it. If you ever edit a mission file or charter,
-   read [`docs/PROMPTING.md`](docs/PROMPTING.md) first — these files
-   are prompts for frontier models, and editing them is a craft.
+   human if they want it. If you EVER edit a mission file, charter, or
+   any text an agent reads — at deploy time or years later — read
+   [`docs/PROMPTING.md`](docs/PROMPTING.md) first. It is binding
+   craft, and its first law (a suggestion becomes an instruction; a
+   list becomes a map) is the one most often broken with good
+   intentions.
 5. [`docs/SECURITY.md`](docs/SECURITY.md) and
    [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — the boundaries, and
    day-2 life (which points into [`docs/LOGGING.md`](docs/LOGGING.md)

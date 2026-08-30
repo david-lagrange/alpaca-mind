@@ -19,19 +19,19 @@ fitness map says which mind fits which brief.
 Foundations to lay before you sleep (ends — the order and depth are
 yours):
 
-1. **Verify your senses and hands.** `trade status`, `trade account`,
-   `trade positions`, `trade quote SPY`, `trade chain --underlying SPY
-   --exp-lte <near expiry>` — and your Alpaca MCP tools. Confirm every
-   surface answers. If something is broken, that failure is your entire
-   report — describe it precisely and stop.
+1. **Verify your senses and hands.** Your `trade` tool across its
+   surfaces, your Alpaca MCP tools, your ledger, your lab — confirm
+   every surface answers before you trust any of them. If something is
+   broken, that failure is your entire report — describe it precisely
+   and stop.
 2. **Read your own mind**: this file's home (`.claude/CLAUDE.md`), your
    charters (`prompts/`), your roster (`.claude/agents/`), your seeded
    `state/schedule.json`. All of it is yours to revise from tomorrow
    on; today, know what you own.
-3. **Meet the market.** Survey it however you judge best — the tape,
-   the options surface, volatility, the calendar of what's coming.
-   Write your first `strategies/` note: what kind of market is this,
-   and how do you intend to begin learning your edge in it?
+3. **Meet the market.** Survey it however you judge best — what
+   matters, and how to look, is yours to discover. Write your first
+   `strategies/` note: what kind of market is this, and how do you
+   intend to begin learning your edge in it?
 4. **Take your first position.** Find the best thesis today offers
    that you can defend in writing, and put real capital behind it —
    sized to your conviction; small is fine. Your learning loop starts

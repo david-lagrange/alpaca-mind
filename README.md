@@ -39,7 +39,9 @@ it fully before advising your human, in this order:
    verification steps, and what to say when you hand over the link.
 4. [`docs/MISSIONS.md`](docs/MISSIONS.md) — the default mission is
    options trading; this is how to design a different one with your
-   human if they want it.
+   human if they want it. If you ever edit a mission file or charter,
+   read [`docs/PROMPTING.md`](docs/PROMPTING.md) first — these files
+   are prompts for frontier models, and editing them is a craft.
 5. [`docs/SECURITY.md`](docs/SECURITY.md) and
    [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — the boundaries, and
    day-2 life.

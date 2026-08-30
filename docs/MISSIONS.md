@@ -4,6 +4,12 @@
 If your human wants a different mission, design it WITH them before
 deploying — this is the how.*
 
+**Before editing any mission file or charter, read
+[`PROMPTING.md`](PROMPTING.md).** These files are prompts for frontier
+Claude models; prompt craft has real failure modes (anchoring, quota
+ceilings, emphasis dilution, route calcification), and that document is
+the doctrine for avoiding them.
+
 ## What a mission is (and is not)
 
 A mission is the agent's PURPOSE and WORLD — never its strategy. The

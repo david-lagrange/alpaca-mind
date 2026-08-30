@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "includeCoAuthoredBy": false,
+  "env": {
+    "CLAUDE_CODE_AUTOUPDATE": "false"
+  },
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "Agent"
+    ],
+    "deny": [
+      "Edit(/opt/alpaca-mind/**)",
+      "Write(/opt/alpaca-mind/**)",
+      "Edit(/srv/ui/**)",
+      "Write(/srv/ui/**)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(git push --force*)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /opt/alpaca-mind/engine/hooks/no_background_bash.py"
+          }
+        ]
+      }
+    ]
+  }
+}

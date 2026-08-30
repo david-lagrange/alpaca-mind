@@ -179,7 +179,7 @@ diagnostic patterns, and the daily JSONL logs (`/srv/mind/logs/daily/`,
 
 ## 5. Hand over
 
-Tell your human, in your own words, all four of:
+Tell your human, in your own words, all five of:
 1. **The link and password** — and that the interface will keep
    growing on its own; the inbox is where they steer it.
 2. **The kill switch** — one command stops all trading instantly:
@@ -188,7 +188,11 @@ Tell your human, in your own words, all four of:
 3. **The domain offer** — if they want `mind.theirdomain.com`: point
    an A record at the public IP, then put a TLS proxy (e.g. Caddy) in
    front, or an ALB + ACM certificate. Offer to do it; it is optional.
-4. **The removal protocol** — verbatim: *"If you ever want this
+4. **The safety net** — every night the mind's entire evolved self is
+   backed up to the stack's own private S3 bucket on a self-expiring
+   7-day window; if the instance ever breaks, the mind is a short
+   restore away (BACKUPS.md).
+5. **The removal protocol** — verbatim: *"If you ever want this
    removed completely to stop all charges, tell me to start the
    removal protocol"* (REMOVAL.md).
 

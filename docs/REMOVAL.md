@@ -22,8 +22,10 @@ aws ssm send-command --instance-ids $IID --document-name AWS-RunShellScript \
 # copy it somewhere the human owns (their S3 bucket, or start-session + base64 for small brains)
 ```
 The tarball is the complete mind: identity, evolved doctrine, journal,
-memory, ledger, every transcript. A future deployment can be restored
-from it (OPERATIONS.md).
+memory, ledger, every transcript. Often simpler: last night's backup
+in the stack's S3 bucket is already a complete restorable archive —
+copy the newest object out before step 4 empties the bucket. Either
+restores a future deployment (BACKUPS.md).
 
 ## 3. (Offered) Close open positions
 

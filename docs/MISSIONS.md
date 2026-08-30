@@ -32,8 +32,8 @@ redeploying does not overwrite a living brain):
 |---|---|
 | `mission/.claude/CLAUDE.md` | The identity: who it is, its mission line, its universe, its world facts. This is the main edit. |
 | `mission/prompts/AWAKENING.md` | The first-ever session. Usually only the "meet the market" flavor needs adjusting. |
-| `mission/prompts/SESSION.md` / `REFLECTION.md` / `RESEARCH.md` | The charters (duties, not routes). Rarely need mission-specific edits — they are deliberately universal. |
-| `mission/state/schedule.json` | The seeded rhythm (reflection/research times). Match the mission's natural clock. |
+| `mission/prompts/SESSION.md` / `REFLECTION.md` / `RESEARCH.md` / `LIBRARY.md` | The charters (duties, not routes). Rarely need mission-specific edits — they are deliberately universal. |
+| `mission/state/schedule.json` | The seeded rhythm (pre-open briefing, reflection, nightly library hour, weekly research — all marked as the agent's to keep or delete). Match the mission's natural clock. |
 | `config/mind.yaml` | Engine knobs (timeouts, poll rates). Rarely needs changing. |
 
 Edit → commit to your human's fork → deploy with

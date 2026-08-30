@@ -33,6 +33,7 @@ fully before explaining it to your human or changing anything.*
 │       journals, and transcripts READ-ONLY)                         │
 │                                                                    │
 │  systemd: mind-supervisor, mind-sentinel, ui-supervisor, ui-web    │
+│    (+ ui-restart.path and the nightly mind-backup.timer → S3)      │
 │  UI served on port 80 (Basic Auth, password set at deploy)         │
 └────────────────────────────────────────────────────────────────────┘
         │                                   │
@@ -63,9 +64,14 @@ bid/ask-aware variants, percent moves, ranges, order fills) every ~15s,
 adopts fills that land after the placing session ended (including
 multi-leg options structures, partial fills, and resting exits), runs
 the agent's scanner scripts, snapshots the account balance, and wakes
-the agent by writing `state/wake_request.json`. Unevaluable triggers
-fail LOUD (an event plus an author-wake) — the worst failure a
-protective layer can have is looking armed while being dead.
+the agent by writing `state/wake_request.json`. The agent's sensors
+carry the same choice rights as its schedule: a trigger or a scanner
+fire may name the `run_type`, `model`, `effort`, and `charter` its
+wake should run under — a thesis-invalidation tripwire can summon the
+deepest mind under a crisis frame the agent wrote for that moment.
+Unevaluable triggers fail LOUD (an event plus an author-wake) — the
+worst failure a protective layer can have is looking armed while
+being dead.
 
 **Scanners** are the agent's own Python sensors (`scanners/` +
 `manifest.json`), run in isolated subprocesses with resource limits,
@@ -112,13 +118,20 @@ in the inbox. The trader can also ring it directly — `trade notify`,
 one command, callable from any session when something worth showing
 happened — and the manager wakes as soon as that session closes; the
 session-count cadence and max-gap are only the floor for a trader
-that never rings. Each pass it reads the trader's journals (the trader
-narrating its own life), transcripts, and ledger — then grows the app:
+that never rings. Each pass it reads the owner's standing requests
+(a seeded memory file listing the sections the interface always
+serves — live account tracking, trades with theses, lessons with
+deep-dive reports, compounding knowledge, problems overcome, open-
+trade trackers, the trader's own schedule), then the trader's journals
+(the trader narrating its own life), transcripts, and ledger — from a
+watermark, so it integrates only what's new — and grows the app:
 pages, components, its own SQLite tables, whatever makes the trader's
-inner life visible. Its charters bind it to a hard quality law: builds
+inner life visible. Its taste is bound to restraint (live components
+only where nowness is the information; a design language in
+`ui/STYLE.md`), and its charters bind it to a hard quality law: builds
 must pass, every route verified, mobile-first, honest empty/error
-states, a fresh-eyes review — it never restarts the site onto a broken
-build.
+states, everything it builds logs, a fresh-eyes review — it never
+restarts the site onto a broken build.
 
 **The inbox** is the owner's steering wheel for *visibility* (never for
 trading): messages become interface on the next pass, with an
@@ -144,7 +157,11 @@ addressed-note trail, and a "run now" button when something's waiting.
 |---|---|
 | First boot | trader awakening → UI First Construction |
 | Market hours | sentinel triggers/scanners wake the trader as armed |
+| 9:10 ET weekdays (seed) | pre-open briefing — plan the day before the bell |
 | 16:45 ET weekdays (seed) | trader reflection session |
+| 20:30 ET nightly (seed) | library hour — study, build, explore |
 | Sat 12:00 ET (seed) | trader research block |
-| Every ~4 trader sessions | UI evolution pass |
+| `trade notify` rung | UI evolution pass as soon as that session closes |
+| Every ~4 trader sessions / 12h | UI evolution pass (floor, if never rung) |
+| 00:00 UTC nightly | full backup to the stack's S3 bucket (7-day window) |
 | Anytime | owner inbox "run now" → UI pass; `HALT` file → all quiet |

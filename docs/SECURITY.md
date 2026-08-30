@@ -18,7 +18,7 @@ enforces.
 |---|---|---|
 | Trader (`mind`) | trade via its CLI + MCP tools; write its own workspace/lab; read its own everything | write the engine; touch `/srv/ui`; read `.env` files (settings-denied) or SSM; sudo |
 | UI manager (`ui`) | write `/srv/ui/app` + its workspace; READ the trader's ledger, journals, transcripts (group read-only) | write anything of the trader's; place any order (no trade CLI path, no venue write creds needed for its job); sudo |
-| Web app | serve read-views + the inbox | reach anything but its own SQLite, the read-only ledger, and account READ endpoints |
+| Web app | serve read-views + the inbox | reach anything but its own SQLite, the read-only ledger, the daily log streams (read-only), and account READ endpoints |
 | Engine daemons | root-owned code, run as the agent users | — |
 
 The web app sits behind HTTP Basic Auth over EVERY route (user
@@ -45,6 +45,11 @@ sessions, and sessions have no reason to echo secrets — if your human
 ever pastes a key into a session by accident, rotate it at the
 provider. Rotation = update the SSM parameter, re-run the `.env`
 materialization from setup (or edit the file), restart services.
+
+Two surfaces that leave the box are secret-free by construction: the
+structured logs never receive keys or auth headers (LOGGING.md), and
+the nightly backup archives exclude `.env` files and credential caches
+(BACKUPS.md) — backups travel to S3; secrets never do.
 
 ## Live money (the honest section)
 

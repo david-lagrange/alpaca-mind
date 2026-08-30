@@ -44,7 +44,8 @@ it fully before advising your human, in this order:
    are prompts for frontier models, and editing them is a craft.
 5. [`docs/SECURITY.md`](docs/SECURITY.md) and
    [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — the boundaries, and
-   day-2 life.
+   day-2 life (which points into [`docs/LOGGING.md`](docs/LOGGING.md)
+   and [`docs/BACKUPS.md`](docs/BACKUPS.md) when you need depth).
 6. [`docs/REMOVAL.md`](docs/REMOVAL.md) — the removal protocol. Tell
    your human at the end of deployment: *"if you ever want this removed
    completely to stop all charges, tell me to start the removal
@@ -88,12 +89,15 @@ questions, and do the work. Prefer to drive yourself? Start with
   reflection and research sessions with pre-registered studies.
 - **The living interface.** The UI manager reads the trader's journals
   and transcripts and keeps rebuilding the web app to show what
-  matters now — plus the inbox, where your requests become pages.
+  matters now — plus the inbox, where your requests become pages, and
+  a built-in live log view into both agents' nervous systems.
 - **Honest to a fault.** Every claim traceable to a tool result; losses
   reported as plainly as wins; per-session prompt snapshots so even the
   agent's evolving self-instructions stay auditable forever.
-- **Easy in, easy out.** One stack up; one
-  [removal protocol](docs/REMOVAL.md) down — nothing left billing.
+- **Easy in, easy out — and safe in between.** One stack up; nightly
+  self-expiring [backups](docs/BACKUPS.md) so the evolved mind
+  survives its hardware; one [removal protocol](docs/REMOVAL.md) down
+  — nothing left billing.
 
 ## What it is not
 

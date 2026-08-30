@@ -6,12 +6,12 @@ pricing on the providers' sites when precision matters.*
 
 ## The three bills
 
-**1. AWS (~$28–65/month).**
+**1. AWS (~$31–56/month).**
 | Item | Approx |
 |---|---|
 | EC2 t4g.large (2 vCPU / 8 GB, the default) | ~$49/mo on-demand |
 | EC2 t4g.medium (budget option, 4 GB) | ~$25/mo on-demand |
-| EBS 30 GB gp3 root volume | ~$3/mo |
+| EBS 64 GB gp3 root volume (the stack default) | ~$5/mo |
 | S3 nightly backups (7-day rolling window, self-expiring) | well under $1/mo |
 | Everything else in the stack (VPC, SSM, security group) | $0 |
 
@@ -21,11 +21,15 @@ with patience. Deleting the stack ends all of it (REMOVAL.md).
 
 **2. Claude subscription ($100–200/month).** Both agents run as
 headless Claude Code sessions billed to a flat-rate subscription — no
-per-token API bills. A **Max (5x)** plan (~$100/mo) comfortably covers
-the default cadence (a handful of trader sessions a day plus UI
-passes); **Max (20x)** (~$200/mo) buys headroom for heavy research use
-or a busier self-chosen cadence. The agent never sees usage numbers —
-if a plan's limits are hit, sessions wait rather than degrade.
+per-token API bills. The default configuration puts the deepest
+available model at the trader's helm (the judgment is the product;
+lighter subagents carry the legwork), and the seeded rhythm is a full
+day — pre-open, market-hours wakes, reflection, a nightly library
+hour. **Max (20x)** (~$200/mo) runs that comfortably; **Max (5x)**
+(~$100/mo) works with a more modest cadence — the agent owns its own
+schedule and can trim it, and the model defaults in `config/mind.yaml`
+are one edit. The agent never sees usage numbers — if a plan's limits
+are hit, sessions wait rather than degrade.
 
 **3. Alpaca ($0 — optionally $99/month).** Paper trading is free,
 with free real-time market data sufficient for the default setup (the
@@ -39,9 +43,9 @@ data quality, or before live money.
 
 | Setup | Monthly |
 |---|---|
-| Paper, budget instance, Max 5x | ~$128 |
-| **Paper, recommended (t4g.large, Max 5x)** | **~$152** |
-| Live-ready (t4g.large, Max 20x, Algo Trader Plus) | ~$351 |
+| Paper, budget (t4g.medium, Max 5x, trimmed cadence) | ~$131 |
+| **Paper, recommended (t4g.large, Max 20x)** | **~$255** |
+| Live-ready (t4g.large, Max 20x, Algo Trader Plus) | ~$354 |
 
 Plus whatever trading capital sits in a live account — which is capital
 at risk, not a fee. Paper accounts trade simulated money.

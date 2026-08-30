@@ -14,6 +14,13 @@
 # =============================================================================
 set -euo pipefail
 
+# Windows Git Bash rewrites leading-slash arguments into filesystem
+# paths before a native executable sees them, which mangles SSM
+# parameter names. These exclusions disable that conversion; they are
+# inert everywhere else.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 PREFIX=/alpaca-mind
 FILE=""
 KEEP=0

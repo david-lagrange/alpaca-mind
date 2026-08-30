@@ -343,15 +343,14 @@ install -d -o ui -g ui -m 750 /srv/ui/logs /srv/ui/logs/daily
 # ----------------------------------------------------------------------------
 # 10. Engine configuration — root-owned copies from the source checkout so a
 #     compromised or confused agent cannot rewrite its own operating rules.
-#     (The engine copy in step 3 already includes config/; this re-assert is
-#     cheap and keeps the invariant obvious.)
 # ----------------------------------------------------------------------------
 
 install -d -m 755 "$ENGINE_HOME/engine/config"
 for cfg in mind.yaml ui.yaml; do
-  if [ -f "$SRC_DIR/engine/config/$cfg" ]; then
-    install -m 644 "$SRC_DIR/engine/config/$cfg" "$ENGINE_HOME/engine/config/$cfg"
-  fi
+  # Configs live at the repo root's config/. install fails loudly if a
+  # source is missing — a silently absent config becomes three services
+  # crash-looping with nothing to say for themselves.
+  install -m 644 "$SRC_DIR/config/$cfg" "$ENGINE_HOME/engine/config/$cfg"
 done
 
 # ----------------------------------------------------------------------------

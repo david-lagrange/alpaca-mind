@@ -22,7 +22,8 @@ models:
   evolve: opus
   effort:
     default: medium
-    construct: high      # the first build sets the architecture — worth depth
+    construct: xhigh     # runs once, founds everything the owner sees —
+                         # the one UI session where full depth is cheap
 
 sessions:
   max_turns: 600

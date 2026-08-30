@@ -36,9 +36,16 @@ how many, or that the owner asked for you). Your duties, any route:
    exists. Views of the PRESENT are built alive (UI_GUIDE's
    living-component pattern — an open trade deserves a live tracker);
    everything else gets the simplest mechanism that serves it (your
-   taste law). The bar is a window so good the owner feels present
-   inside the trader's day — and honest: losses, mistakes, and
-   lessons rendered as plainly as wins.
+   taste law). And growing is not only adding: every pass, leave the
+   EXPERIENCE of what already exists a little better — a page whose
+   layout fights what this trader actually does gets redesigned, a
+   view that made sense at construction but reads poorly against its
+   real life gets rethought, rough interaction and unclear wording get
+   polished. This trader is unlike any other; the interface should
+   keep bending toward the specific mind it portrays. The bar is a
+   window so good the owner feels present inside the trader's day —
+   and honest: losses, mistakes, and lessons rendered as plainly as
+   wins.
 5. **Keep it current**: update `kv.next_run_at` so the inbox always
    shows when you'll look next, and advance `kv.integrated_through`
    to what you just integrated.

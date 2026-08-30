@@ -4,6 +4,15 @@ The trader has completed its first session(s). Until now the app at
 `/srv/ui/app` is a scaffold with a landing page and the inbox — your
 job today is to turn it into the owner's first real window.
 
+This run happens ONCE. Everything you build today is the foundation
+every evolution pass refines, and the first thing the owner ever sees
+— so spend real depth here, and fan out liberally: subagents reading
+the trader's transcripts while you design, a subagent per section
+building in parallel where the work is independent, fresh-eyes
+reviewers on what you've assembled. A first build that took longer and
+came out excellent beats a quick one every time; nothing else is
+competing for this session's attention.
+
 Before anything: read `/srv/ui/app/UI_GUIDE.md` and
 `/srv/ui/app/STYLE.md` end to end, then your memory
 (`memory/MEMORY.md` → `memory/owner-defaults.md` — your owner's

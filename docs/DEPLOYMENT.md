@@ -72,21 +72,37 @@ aws sts get-caller-identity        # AWS CLI configured?
 
 ## 2. Secrets into SSM (before the stack — the instance reads them at boot)
 
-Have the human run `claude setup-token` locally (it opens a browser,
-they approve, it prints a long-lived token — that token is what lets
-the headless agents authenticate against their subscription).
+Five values go into SSM Parameter Store. The rule that matters: **keep
+secret values out of the chat conversation** — they should travel from
+your human to SSM without being pasted to you as message text.
 
-Then (region must match where you'll create the stack; never echo the
-values back into the conversation more than needed, and suggest the
-human paste secrets directly into their own terminal):
+**The friendly path (default — your human never opens a terminal):**
+
+1. Copy `deploy/secrets.env.example` to `secrets.env` and ask your
+   human to open it in any text editor, paste in their two Alpaca keys,
+   choose a UI password, and save. (It's gitignored; it exists only for
+   the next sixty seconds.)
+2. The Claude token: run `claude setup-token` YOURSELF — a browser
+   window opens and your human just clicks Approve; put the printed
+   token into the file directly rather than through the chat.
+3. Push and clean up (prefix must match the stack's `SsmPrefix`;
+   region must match where you'll create the stack):
+   ```bash
+   bash deploy/push-secrets.sh --prefix /alpaca-mind
+   ```
+   The script validates all five values, pushes them as SecureStrings
+   without printing any of them, and deletes the staging file.
+
+**The direct path (terminal-comfortable humans):** have them paste
+these into their own terminal with real values:
 
 ```bash
 P=/alpaca-mind   # the SsmPrefix; change if deploying multiple stacks
-aws ssm put-parameter --name $P/ALPACA_API_KEY    --type SecureString --value '<YOUR_ALPACA_KEY>'
-aws ssm put-parameter --name $P/ALPACA_SECRET_KEY --type SecureString --value '<YOUR_ALPACA_SECRET>'
-aws ssm put-parameter --name $P/ALPACA_PAPER      --type SecureString --value 'true'
-aws ssm put-parameter --name $P/CLAUDE_CODE_OAUTH_TOKEN --type SecureString --value '<TOKEN_FROM_claude_setup-token>'
-aws ssm put-parameter --name $P/UI_PASSWORD       --type SecureString --value '<CHOSEN_UI_PASSWORD>'
+aws ssm put-parameter --overwrite --name $P/ALPACA_API_KEY    --type SecureString --value '<YOUR_ALPACA_KEY>'
+aws ssm put-parameter --overwrite --name $P/ALPACA_SECRET_KEY --type SecureString --value '<YOUR_ALPACA_SECRET>'
+aws ssm put-parameter --overwrite --name $P/ALPACA_PAPER      --type SecureString --value 'true'
+aws ssm put-parameter --overwrite --name $P/CLAUDE_CODE_OAUTH_TOKEN --type SecureString --value '<TOKEN_FROM_claude_setup-token>'
+aws ssm put-parameter --overwrite --name $P/UI_PASSWORD       --type SecureString --value '<CHOSEN_UI_PASSWORD>'
 ```
 
 ## 3. Create the stack

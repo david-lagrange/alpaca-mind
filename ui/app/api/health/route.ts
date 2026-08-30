@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { ledgerAvailable } from "@/lib/ledger";
+import { logEvent } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,12 @@ export async function GET() {
   try {
     getDb().prepare("SELECT 1").get();
     uiDbOk = true;
-  } catch {
+  } catch (err) {
     uiDbOk = false;
+    logEvent("error", "health_ui_db_check_failed", {
+      path: "/api/health",
+      error: String(err),
+    });
   }
 
   return NextResponse.json({

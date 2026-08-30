@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addInboxMessage, listInbox } from "@/lib/db";
+import { logEvent } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,27 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const start = Date.now();
+  try {
+    const response = await handlePost(request);
+    logEvent("info", "api_request", {
+      path: "/api/inbox",
+      method: "POST",
+      status: response.status,
+      dur_ms: Date.now() - start,
+    });
+    return response;
+  } catch (err) {
+    logEvent("error", "api_error", {
+      path: "/api/inbox",
+      method: "POST",
+      error: String(err),
+    });
+    throw err;
+  }
+}
+
+async function handlePost(request: NextRequest) {
   const contentType = request.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
 

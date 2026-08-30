@@ -35,11 +35,14 @@ ui/
     page.tsx          Landing page (replace this with the real home)
     globals.css       Theme variables + Tailwind layers
     inbox/page.tsx    Owner → UI-manager inbox
-    api/              Route handlers (health, inbox, run-now, + yours)
+    logs/             Structured-log viewer (mind + ui daily JSONL streams)
+    api/              Route handlers (health, inbox, run-now, logs, + yours)
   lib/
     db.ts             The UI's own SQLite (shared connection, migrations)
     ledger.ts         Read-only trading ledger access (typed helpers)
     alpaca.ts         Read-only brokerage REST helpers
+    log.ts            The web app's own JSONL event logger (server-side)
+    logs.ts           Read-side helpers for the daily JSONL log streams
   components/         Shared components you create (make this as needed)
   data/               Runtime state (SQLite, request files) — gitignored
   middleware.ts       Whole-app Basic Auth gate
@@ -150,6 +153,13 @@ redirect back to the page when the route backs an HTML form. Server
 actions are also fine for page-local mutations; prefer an API route when
 anything else (including you) might call it.
 
+**Web logging.** API routes log through `lib/log.ts` (component `web`)
+into the same daily JSONL stream the Logs page renders
+(`$UI_LOGS_DIR/daily/`): one `api_request` info event per mutating
+request, plus error events with context in catch paths. `logEvent`
+never throws and no-ops when `UI_LOGS_DIR` is unset — logging must
+never change a route's behavior.
+
 ## Creating new tables
 
 Add your tables to the `MIGRATIONS` array in `lib/db.ts` as idempotent
@@ -220,6 +230,8 @@ After editing code:
 | `UI_DB_PATH` | The UI's own SQLite database | `./data/ui.sqlite` |
 | `LEDGER_PATH` | The trading engine's ledger (read-only) | — |
 | `UI_RUN_REQUEST_PATH` | Immediate-run marker file | `./data/run_request.json` |
+| `MIND_LOGS_DIR` | Trading engine's structured daily logs (read-only here) | — |
+| `UI_LOGS_DIR` | This app's structured daily logs (read and write) | — |
 | `ALPACA_API_KEY` | Brokerage API key, e.g. `<YOUR_ALPACA_KEY>` | — |
 | `ALPACA_SECRET_KEY` | Brokerage API secret, e.g. `<YOUR_ALPACA_SECRET>` | — |
 | `ALPACA_PAPER` | `"true"` targets the paper API, else live | `true` |

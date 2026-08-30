@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+import { logEvent } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,27 @@ export const dynamic = "force-dynamic";
 const DEFAULT_RUN_REQUEST_PATH = "./data/run_request.json";
 
 export async function POST(request: NextRequest) {
+  const start = Date.now();
+  try {
+    const response = await handlePost(request);
+    logEvent("info", "api_request", {
+      path: "/api/run-now",
+      method: "POST",
+      status: response.status,
+      dur_ms: Date.now() - start,
+    });
+    return response;
+  } catch (err) {
+    logEvent("error", "api_error", {
+      path: "/api/run-now",
+      method: "POST",
+      error: String(err),
+    });
+    throw err;
+  }
+}
+
+async function handlePost(request: NextRequest) {
   const filePath = path.resolve(
     process.env.UI_RUN_REQUEST_PATH || DEFAULT_RUN_REQUEST_PATH
   );
@@ -28,7 +50,11 @@ export async function POST(request: NextRequest) {
       JSON.stringify({ requested_at: new Date().toISOString() }) + "\n",
       "utf8"
     );
-  } catch {
+  } catch (err) {
+    logEvent("error", "run_request_write_failed", {
+      path: "/api/run-now",
+      error: String(err),
+    });
     return NextResponse.json(
       { error: "Could not write the run request." },
       { status: 500 }

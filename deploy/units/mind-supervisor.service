@@ -1,0 +1,29 @@
+# alpaca-mind: supervisor daemon for the trading agent ("mind").
+# Launches and shepherds the agent's headless Claude sessions per the
+# root-owned engine config. Runs as the unprivileged `mind` user; secrets
+# arrive only through the owner-only EnvironmentFile.
+
+[Unit]
+Description=alpaca-mind trading agent supervisor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mind
+Group=mind
+WorkingDirectory=/srv/mind/workspace
+EnvironmentFile=/srv/mind/.env
+# The agent's Claude CLI lives in the user's ~/.local/bin; uvx in /usr/local/bin.
+Environment=PATH=/srv/mind/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/srv/mind
+ExecStart=/opt/alpaca-mind/venv/bin/python /opt/alpaca-mind/engine/supervisor.py --config /opt/alpaca-mind/engine/config/mind.yaml
+Restart=always
+RestartSec=10
+# Keep daemon chatter in the journal; the engine writes session transcripts
+# to /srv/mind/logs itself.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

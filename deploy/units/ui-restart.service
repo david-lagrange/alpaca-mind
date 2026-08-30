@@ -1,0 +1,14 @@
+# alpaca-mind: restart-request handler (root-owned oneshot, activated by
+# ui-restart.path). Removes the request file FIRST — so a request that
+# arrives during the restart re-triggers the watcher instead of being lost —
+# then restarts the web server. No rebuild happens here: the UI agent runs
+# `npm run build` itself before requesting the restart, and the ui-web
+# launcher re-syncs standalone assets on every start.
+
+[Unit]
+Description=Restart the alpaca-mind web UI on request
+
+[Service]
+Type=oneshot
+ExecStart=/bin/rm -f /srv/ui/app/data/restart_request.json
+ExecStart=/bin/systemctl restart ui-web.service

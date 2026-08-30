@@ -1,0 +1,26 @@
+# alpaca-mind: sentinel daemon for the trading agent.
+# Independent watchdog process alongside the supervisor (same engine, same
+# config); split into its own unit so either daemon can fail and restart
+# without taking the other down.
+
+[Unit]
+Description=alpaca-mind trading agent sentinel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mind
+Group=mind
+WorkingDirectory=/srv/mind/workspace
+EnvironmentFile=/srv/mind/.env
+Environment=PATH=/srv/mind/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/srv/mind
+ExecStart=/opt/alpaca-mind/venv/bin/python /opt/alpaca-mind/engine/sentinel.py --config /opt/alpaca-mind/engine/config/mind.yaml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,431 @@
+# =============================================================================
+# alpaca-mind — single-stack AWS deployment
+# =============================================================================
+#
+# One CloudFormation stack contains every billable resource this project
+# needs: a VPC, one EC2 instance, a security group, an IAM role/instance
+# profile, and (optionally) an Elastic IP. Deleting the stack removes all of
+# it — every resource carries an explicit DeletionPolicy of Delete, the root
+# volume terminates with the instance, and nothing (buckets, snapshots,
+# volumes) is retained. Easy total removal is a product promise.
+#
+# BEFORE creating the stack, put the secrets into SSM Parameter Store as
+# SecureString parameters under the prefix you pass as SsmPrefix
+# (default /alpaca-mind):
+#
+#   aws ssm put-parameter --type SecureString --name /alpaca-mind/ALPACA_API_KEY          --value '<YOUR_ALPACA_KEY>'
+#   aws ssm put-parameter --type SecureString --name /alpaca-mind/ALPACA_SECRET_KEY       --value '<YOUR_ALPACA_SECRET>'
+#   aws ssm put-parameter --type SecureString --name /alpaca-mind/ALPACA_PAPER            --value 'true'
+#   aws ssm put-parameter --type SecureString --name /alpaca-mind/CLAUDE_CODE_OAUTH_TOKEN --value '<YOUR_CLAUDE_TOKEN>'
+#   aws ssm put-parameter --type SecureString --name /alpaca-mind/UI_PASSWORD             --value '<YOUR_UI_PASSWORD>'
+#
+# The stack itself never contains a secret; the instance reads the parameters
+# at setup time through its IAM role and materializes them into owner-only
+# .env files on the host.
+#
+# There is no SSH keypair. Shell access is via SSM Session Manager only:
+#
+#   aws ssm start-session --target <instance-id>
+#
+# Authoring note: intrinsic functions are written in long form (Fn::*/Ref
+# mappings, not "!" short tags) so the template stays parseable by any plain
+# YAML parser and by generic tooling.
+# =============================================================================
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  alpaca-mind: one EC2 instance running an autonomous trading agent (the
+  "mind"), a UI-manager agent, and a Next.js UI. Managed via SSM Session
+  Manager (no SSH). Deleting this stack removes every resource it created.
+
+Parameters:
+
+  InstanceType:
+    Type: String
+    Default: t4g.large
+    AllowedValues:
+      - t4g.medium
+      - t4g.large
+      - t4g.xlarge
+    Description: >-
+      EC2 instance type. Graviton (arm64) instances only — the AMI lookup
+      below resolves an arm64 image.
+
+  SsmPrefix:
+    Type: String
+    Default: /alpaca-mind
+    AllowedPattern: "^/[A-Za-z0-9_./-]+$"
+    Description: >-
+      SSM Parameter Store prefix under which the SecureString secrets were
+      created before stack creation (see the header comment). The instance
+      role is scoped to read only this prefix.
+
+  RepoUrl:
+    Type: String
+    Default: https://github.com/david-lagrange/alpaca-mind
+    Description: >-
+      Git URL of the alpaca-mind repository to deploy. Parameterized so a
+      fork can deploy itself unmodified.
+
+  GitRef:
+    Type: String
+    Default: main
+    Description: Branch or tag of the repository to deploy.
+
+  ClaudeCliVersion:
+    Type: String
+    Default: "2.1.238"
+    Description: >-
+      Claude Code CLI version installed for both agent users. Pinning keeps
+      agent behavior stable across instance rebuilds; upgrade deliberately by
+      updating this parameter, not by letting installs float to latest.
+
+  UiPort:
+    Type: Number
+    Default: 80
+    MinValue: 1
+    MaxValue: 65535
+    Description: >-
+      Public TCP port for the UI. Traffic on this port is redirected on the
+      host to the Next.js app (which listens on an unprivileged port), so the
+      app never needs root or extra capabilities.
+
+  AllocateElasticIp:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >-
+      Set to "true" to allocate an Elastic IP so the public address survives
+      instance stop/start. The default auto-assigned public IP is fine for a
+      continuously running instance.
+
+  RootVolumeSizeGiB:
+    Type: Number
+    Default: 64
+    MinValue: 16
+    MaxValue: 512
+    Description: Root EBS volume size (gp3, encrypted, deleted on termination).
+
+  AmiId:
+    # Resolved through the public SSM parameter for the latest Ubuntu 24.04
+    # arm64 image. NOTE: because this re-resolves on every stack operation, a
+    # stack UPDATE performed after Canonical publishes a newer image will
+    # REPLACE the instance and its disk. Export the agents' state (workspaces,
+    # ledger) before updating a stack you care about. For the fresh-deploy
+    # product this is the intended, zero-maintenance behavior.
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
+    Description: Latest Ubuntu 24.04 arm64 AMI, resolved via public SSM parameter.
+
+Conditions:
+
+  UseElasticIp:
+    Fn::Equals:
+      - Ref: AllocateElasticIp
+      - "true"
+
+  UiOnStandardPort:
+    Fn::Equals:
+      - Ref: UiPort
+      - 80
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Network: a self-contained VPC so the stack works in any account, including
+  # accounts whose default VPC has been deleted. A VPC, subnet, gateway, and
+  # route table are free; the only billable resources are the instance, its
+  # volume, and the optional Elastic IP.
+  # ---------------------------------------------------------------------------
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    DeletionPolicy: Delete
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}-vpc"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DeletionPolicy: Delete
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}-igw"
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DeletionPolicy: Delete
+    Properties:
+      VpcId:
+        Ref: Vpc
+      InternetGatewayId:
+        Ref: InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    DeletionPolicy: Delete
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}-public"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    DeletionPolicy: Delete
+    Properties:
+      VpcId:
+        Ref: Vpc
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}-rt"
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DeletionPolicy: Delete
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DeletionPolicy: Delete
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet
+      RouteTableId:
+        Ref: PublicRouteTable
+
+  # ---------------------------------------------------------------------------
+  # Security group: the ONLY inbound rule is the UI port, open to the world.
+  # The UI enforces its own Basic Auth (UI_PASSWORD secret). Everything else
+  # is egress-only; management traffic rides SSM over outbound HTTPS, so no
+  # SSH port exists at all.
+  # ---------------------------------------------------------------------------
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DeletionPolicy: Delete
+    Properties:
+      GroupDescription: alpaca-mind - UI port inbound only; all egress allowed
+      VpcId:
+        Ref: Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort:
+            Ref: UiPort
+          ToPort:
+            Ref: UiPort
+          CidrIp: 0.0.0.0/0
+          Description: Public UI (app enforces Basic Auth)
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: Outbound to package mirrors, broker API, Claude API, SSM
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}-sg"
+
+  # ---------------------------------------------------------------------------
+  # IAM: SSM-core for Session Manager, plus read access to exactly the
+  # SecureString prefix that holds this deployment's secrets. Decryption of
+  # parameters encrypted with the default aws/ssm key is covered by
+  # ssm:GetParameter with-decryption; no broad KMS grant is needed.
+  # ---------------------------------------------------------------------------
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Delete
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - Fn::Sub: "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      Policies:
+        - PolicyName: read-alpaca-mind-secrets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:GetParametersByPath
+                Resource:
+                  - Fn::Sub: "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SsmPrefix}/*"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    DeletionPolicy: Delete
+    Properties:
+      Roles:
+        - Ref: InstanceRole
+
+  # ---------------------------------------------------------------------------
+  # The instance. User-data is deliberately minimal: install git, clone the
+  # repository, and hand off to deploy/setup.sh from the repo — so the full
+  # setup logic lives in version control, not in this template. Setup output
+  # goes to /var/log/alpaca-mind-setup.log; the stack reports CREATE_COMPLETE
+  # as soon as the instance boots, while setup continues for a few minutes.
+  # Tail the log via a Session Manager shell to watch progress.
+  # ---------------------------------------------------------------------------
+
+  Instance:
+    Type: AWS::EC2::Instance
+    DeletionPolicy: Delete
+    DependsOn: PublicDefaultRoute
+    Properties:
+      InstanceType:
+        Ref: InstanceType
+      ImageId:
+        Ref: AmiId
+      IamInstanceProfile:
+        Ref: InstanceProfile
+      SubnetId:
+        Ref: PublicSubnet
+      SecurityGroupIds:
+        - Ref: InstanceSecurityGroup
+      MetadataOptions:
+        # Require IMDSv2 tokens; setup.sh and the AWS CLI both use them.
+        HttpTokens: required
+        HttpEndpoint: enabled
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize:
+              Ref: RootVolumeSizeGiB
+            Encrypted: true
+            # The disk dies with the instance; nothing is retained on delete.
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}"
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash
+            # First-boot bootstrap: fetch the repository, hand off to setup.sh.
+            # Everything (including this script's output) logs to one file.
+            exec >> /var/log/alpaca-mind-setup.log 2>&1
+            set -euxo pipefail
+            export DEBIAN_FRONTEND=noninteractive
+            # Lock timeout: first boot races Ubuntu's unattended-upgrades for
+            # the dpkg lock; wait for it instead of failing.
+            apt-get -o DPkg::Lock::Timeout=600 update
+            apt-get -o DPkg::Lock::Timeout=600 install -y git
+            if [ ! -d /opt/alpaca-mind-src ]; then
+              git clone --branch "${GitRef}" --depth 1 "${RepoUrl}" /opt/alpaca-mind-src
+            fi
+            export SSM_PREFIX="${SsmPrefix}"
+            export CLAUDE_CLI_VERSION="${ClaudeCliVersion}"
+            export UI_PORT="${UiPort}"
+            export AWS_REGION="${AWS::Region}"
+            bash /opt/alpaca-mind-src/deploy/setup.sh
+
+  # Optional stable address. An Elastic IP associated with a running instance
+  # is released automatically when the stack is deleted.
+
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    Condition: UseElasticIp
+    DeletionPolicy: Delete
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}-eip"
+
+  ElasticIpAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Condition: UseElasticIp
+    DeletionPolicy: Delete
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - ElasticIp
+          - AllocationId
+      InstanceId:
+        Ref: Instance
+
+Outputs:
+
+  InstanceId:
+    Description: EC2 instance id (target for SSM Session Manager).
+    Value:
+      Ref: Instance
+
+  PublicIp:
+    Description: Public IP address of the instance.
+    Value:
+      Fn::If:
+        - UseElasticIp
+        - Ref: ElasticIp
+        - Fn::GetAtt:
+            - Instance
+            - PublicIp
+
+  UiUrl:
+    Description: >-
+      URL of the UI (Basic Auth; password is the UI_PASSWORD SSM parameter).
+      Available a few minutes after stack creation, once setup.sh finishes.
+    Value:
+      Fn::If:
+        - UiOnStandardPort
+        - Fn::Sub:
+            - "http://${Address}/"
+            - Address:
+                Fn::If:
+                  - UseElasticIp
+                  - Ref: ElasticIp
+                  - Fn::GetAtt:
+                      - Instance
+                      - PublicIp
+        - Fn::Sub:
+            - "http://${Address}:${UiPort}/"
+            - Address:
+                Fn::If:
+                  - UseElasticIp
+                  - Ref: ElasticIp
+                  - Fn::GetAtt:
+                      - Instance
+                      - PublicIp
+
+  SessionCommand:
+    Description: Open a shell on the instance (no SSH; SSM Session Manager).
+    Value:
+      Fn::Sub: "aws ssm start-session --target ${Instance}"
+
+  SetupLogHint:
+    Description: Where to watch first-boot setup progress from a session shell.
+    Value: "sudo tail -f /var/log/alpaca-mind-setup.log"

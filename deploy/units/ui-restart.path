@@ -1,0 +1,15 @@
+# alpaca-mind: restart-request watcher.
+# The `ui` user cannot restart services, so the UI agent signals a restart by
+# creating this file (after running its own `npm run build`). systemd
+# activates ui-restart.service, which consumes the file and bounces the web
+# server.
+
+[Unit]
+Description=Watch for UI restart requests
+
+[Path]
+PathExists=/srv/ui/app/data/restart_request.json
+Unit=ui-restart.service
+
+[Install]
+WantedBy=multi-user.target

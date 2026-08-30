@@ -1,0 +1,35 @@
+# alpaca-mind: the Next.js UI.
+# The app is built with `output: "standalone"`, so production serving is a
+# plain `node server.js` from the standalone bundle — no npm process wrapper.
+# ExecStart goes through a small root-owned launcher that syncs the static
+# assets the standalone server expects (.next/static and public/) into the
+# bundle on every start; that way the UI agent's own rebuilds are picked up
+# by a simple service restart with no extra deploy step.
+#
+# Binds an unprivileged port (3000); the public UI port is redirected to it
+# by ui-port-redirect.service.
+
+[Unit]
+Description=alpaca-mind web UI (Next.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ui
+Group=ui
+WorkingDirectory=/srv/ui/app
+EnvironmentFile=/srv/ui/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+Environment=PATH=/srv/ui/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/srv/ui
+ExecStart=/bin/bash /opt/alpaca-mind/bin/ui-web-launch.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+# alpaca-mind: public-port redirect.
+# Redirects the public UI port to the unprivileged port the Next.js server
+# binds, so the app never needs root or file capabilities. Applied as a
+# oneshot at every boot (NAT rules do not survive reboot, so no persistence
+# package is needed); the check-before-add keeps repeat starts from stacking
+# duplicate rules. Ports come from /etc/default/alpaca-mind-redirect, written
+# by setup.sh from the stack's UiPort parameter.
+
+[Unit]
+Description=Redirect the public UI port to the app port
+After=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/default/alpaca-mind-redirect
+ExecStart=/bin/sh -c 'iptables -t nat -C PREROUTING -p tcp --dport "$UI_PORT" -j REDIRECT --to-ports "$APP_PORT" 2>/dev/null || iptables -t nat -A PREROUTING -p tcp --dport "$UI_PORT" -j REDIRECT --to-ports "$APP_PORT"'
+ExecStop=/bin/sh -c 'iptables -t nat -D PREROUTING -p tcp --dport "$UI_PORT" -j REDIRECT --to-ports "$APP_PORT" 2>/dev/null || true'
+
+[Install]
+WantedBy=multi-user.target

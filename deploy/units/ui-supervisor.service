@@ -1,0 +1,25 @@
+# alpaca-mind: supervisor daemon for the UI-manager agent.
+# Same engine as the trader's supervisor, different config and different unix
+# user — the two agents share no writable state.
+
+[Unit]
+Description=alpaca-mind UI-manager agent supervisor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ui
+Group=ui
+WorkingDirectory=/srv/ui/workspace
+EnvironmentFile=/srv/ui/.env
+Environment=PATH=/srv/ui/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/srv/ui
+ExecStart=/opt/alpaca-mind/venv/bin/python /opt/alpaca-mind/engine/supervisor.py --config /opt/alpaca-mind/engine/config/ui.yaml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

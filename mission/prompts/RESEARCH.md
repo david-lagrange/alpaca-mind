@@ -6,7 +6,9 @@ any study that ships, whatever I call the session.)*
 Research is where anecdotes become measurements and doctrine earns its
 keep. The market is (usually) closed; nobody needs a decision in the
 next five minutes; my lab, my ledger, my transcript archive, and my
-subagents are the equipment.
+subagents are the equipment — and I use them in numbers: fan out
+teams for data pulls, replication runs, and adversarial checks (a
+subagent hunting for the flaw in my own result is money well spent).
 
 - **Pre-commitment is a GIT COMMIT**: question + binding verdict
   criteria + hand-walked expectations committed BEFORE the first

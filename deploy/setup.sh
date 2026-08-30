@@ -279,7 +279,7 @@ ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
 ALPACA_PAPER=${ALPACA_PAPER}
 CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
 LEDGER_PATH=/srv/mind/ledger.db
-MIND_CONFIG_PATH=${ENGINE_HOME}/engine/config/mind.yaml
+MIND_CONFIG=${ENGINE_HOME}/engine/config/mind.yaml
 EOF
 
 install -o ui -g ui -m 600 /dev/null /srv/ui/.env
@@ -339,6 +339,19 @@ setfacl -R -d -m "g:ledger-readers:rX" /srv/mind/logs
 # The UI side keeps the same structured daily logs (web server and
 # UI-manager supervisor both write there as the ui user).
 install -d -o ui -g ui -m 750 /srv/ui/logs /srv/ui/logs/daily
+
+# The trader's execution hand: `trade` on its PATH. The wrapper is a
+# convenience pointer; the law it invokes stays root-owned under
+# /opt/alpaca-mind. It defaults MIND_CONFIG so the hand works in any
+# shell the mind opens, not only under the service environment.
+install -d -o mind -g mind -m 755 /srv/mind/.local/bin
+cat > /srv/mind/.local/bin/trade <<EOF
+#!/bin/sh
+export MIND_CONFIG="\${MIND_CONFIG:-${ENGINE_HOME}/engine/config/mind.yaml}"
+exec ${ENGINE_HOME}/venv/bin/python ${ENGINE_HOME}/engine/trade.py "\$@"
+EOF
+chown mind:mind /srv/mind/.local/bin/trade
+chmod 755 /srv/mind/.local/bin/trade
 
 # ----------------------------------------------------------------------------
 # 10. Engine configuration — root-owned copies from the source checkout so a

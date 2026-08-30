@@ -16,42 +16,46 @@ owns its recurring schedule (mission/state/schedule.json), chooses its
 model and reasoning effort per wake, and writes the very charters its
 sessions run under (mission/prompts/ — revisable by the agent, in git,
 like everything it owns). It staffs each problem from a roster of bare
-model-and-effort "instruments" — subagents allocated by an honest
-fitness map, not hardcoded roles.
+model-and-effort "instruments," allocated by an honest fitness map.
 
 Between sessions, a zero-cost sentinel daemon (engine/sentinel.py)
-evaluates the agent's self-authored tripwires every ~15 seconds — and
-runs the agent's own Python scanner scripts in sandboxed subprocesses,
-with shadow-mode validation, wake budgets, and automatic quarantine
-protecting it from its own bugs. Research the mind performs becomes a
-deployed sensor with no human in the loop. It journals every waking
-moment, reviews its trades and its own raw transcripts in
-self-scheduled reflection, and pre-registers research as git commits
-BEFORE running the numbers, so its studies cannot cheat. What compounds
-is a self — skills, doctrine, sensors, memory — with git history as the
-record of who it is becoming.
+evaluates the agent's self-authored tripwires every ~15 seconds and
+runs the agent's own Python scanner scripts in sandboxed subprocesses
+(shadow-mode validation, wake budgets, automatic quarantine). Research
+the mind performs becomes a deployed sensor with no human in the loop —
+and every sensor carries the agent's choice rights: a tripwire it arms
+can summon its deepest mind under a crisis charter it wrote for exactly
+that moment. It journals every waking moment, reviews its trades and
+raw transcripts in self-scheduled reflection, and pre-registers
+research as git commits BEFORE running the numbers, so its studies
+cannot cheat. What compounds is a self — skills, doctrine, sensors,
+memory — with git history as the record of who it is becoming.
 
 THE TRUTH MACHINERY
 Every order is written to a SQLite ledger before the venue sees it
 (engine/trade.py — a crash leaves a pending row to reconcile, never a
 phantom fill). Every trade links to the complete reasoning transcript
-that produced it. Fills landing after a session ends — multi-leg
-structures and partials included — are adopted by the sentinel, which
-wakes the agent to respond. Tripwires that cannot be evaluated fail
-LOUD (an event plus an author-wake): the worst failure a protective
-layer can have is looking armed while being dead. Every session's exact
-prompt is snapshotted to disk, so even the agent's evolving
-self-instructions stay auditable forever.
+that produced it. Fills landing after a session ends — multi-leg and
+partials included — are adopted by the sentinel, which wakes the agent.
+Tripwires that cannot be evaluated fail LOUD: the worst failure a
+protective layer can have is looking armed while being dead. Every
+session's exact prompt is snapshotted to disk, and every component
+narrates structured events into day-split, disk-safe log streams
+(engine/jsonlog.py) rendered live in the interface's built-in Logs
+view — the whole nervous system is inspectable, and even the agent's
+evolving self-instructions stay auditable forever.
 
 RISK, STATED HONESTLY
 There is no risk cage, on purpose. The engine enforces exactly two
 bounds, both machine protections rather than judgment: the owner's kill
 switch (state/HALT — one file, everything stops) and an orders-per-hour
 runaway-code cap. Sizing, exits, hedging, risk doctrine — the agent
-researches and evolves its own, that freedom is disclosed everywhere
-(docs/SECURITY.md), and paper trading is the default. Published
-algorithms converge and decay as they are copied. A mind that builds
-its own doctrine diverges.
+researches and evolves its own; the freedom is disclosed everywhere
+(docs/SECURITY.md) and paper trading is the default. And success is
+defined to the mind as the learning loop itself: a graded loss is
+tuition equal to a win — the only failure it recognizes is idle
+certainty. Published algorithms converge and decay as they are copied.
+A mind that builds its own doctrine diverges.
 
     No two deployments become the same trader — each walks its own
     pathless land and finds its own edge.
@@ -60,11 +64,13 @@ THE LIVING INTERFACE
 A second, cheaper agent owns a Next.js app (ui/) and nothing else. It
 builds the interface AFTER the trader's first real session — from the
 trader's own journals and transcripts — then keeps growing it as the
-trader lives: live-polling dashboards that breathe between its runs,
-honest losses beside wins, and an inbox where the owner's requests
-("show me how it thinks about earnings") become new pages on the next
-pass. Its charter is a verification law — builds pass, every route
-checked, mobile-first — or it doesn't ship (ui-mission/).
+trader lives: live-polling dashboards, honest losses beside wins, and
+an inbox where the owner's requests become new pages on the next pass.
+The trader itself rings for its window-keeper — `trade notify`, one
+command — and the manager wakes the moment its session closes; the
+clock cadence is only the floor. Its charter is a verification law —
+builds pass, every route checked, mobile-first — or it doesn't ship
+(ui-mission/).
 
 THE SHAPE — ONE INSTANCE
 Alpaca (Trading API · Market Data · MCP) <-> THE MIND (sessions,
@@ -78,6 +84,7 @@ VERIFY IT YOURSELF — RECEIPTS
   engine/sentinel.py     tripwires, fill adoption, scanners
   engine/trade.py        ledger-first orders; the two bounds
   engine/venue.py        options chains, greeks, mleg orders
+  engine/jsonlog.py      structured logs, disk-safe by construction
   mission/.mcp.json      Alpaca MCP inside every session
   mission/.claude/       the identity: "I was born free"
   ui/UI_GUIDE.md         living-component conventions
@@ -85,12 +92,13 @@ VERIFY IT YOURSELF — RECEIPTS
 
 DEPLOYMENT IS THE DEMO
 Three prerequisites: AWS CLI · Claude Code subscription · Alpaca keys.
-One stack up — and one removal protocol down: nothing left billing
-(docs/REMOVAL.md). The README's primary reader is not a human: paste
-the repo link to any AI assistant and it deploys the whole system —
-interviews you, explains real monthly costs, stands it up, hands you
-the live URL. Software for the age of AI operators — distributed
-through them.
+One stack up — nightly self-expiring S3 backups while it lives (the
+mind survives its hardware) — one removal protocol down: nothing left
+billing (docs/REMOVAL.md). The README's primary reader is not a human:
+paste the repo link to any AI assistant and it deploys the whole
+system — interviews you, explains real monthly costs, stands it up,
+hands you the live URL. Software for the age of AI operators —
+distributed through them.
 
 MIT License · paper trading by default · not financial advice
 Read the code — then watch a mind find its own way.

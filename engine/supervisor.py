@@ -9,7 +9,9 @@ The contract with the agent:
     frame per wake. The engine honors what is written and never
     allocates thought on its own.
   * The sentinel may file state/wake_request.json (a trigger fired, a
-    fill landed) — serviced ahead of the schedule.
+    fill landed) — serviced ahead of the schedule. Its optional wake_as
+    block carries the same choice fields, so the agent's sensors wake
+    it as the mind and under the charter the agent armed them with.
   * If the schedule stops producing reflection entirely, one generous
     aliveness backstop fires — and says plainly that the ENGINE fired
     it. Engine-caused wakes never impersonate the agent's own reasons;
@@ -150,11 +152,20 @@ class Supervisor:
         if time.time() - last < min_gap:
             return None
 
-        # Sentinel wake request (a trigger fired, a fill landed).
+        # Sentinel wake request (a trigger fired, a fill landed). The
+        # agent's sensors carry the same choice rights as its schedule:
+        # a trigger or scanner may name the run_type, model, effort, and
+        # charter its wake should run under (the wake_as block).
         req = self.read_json("wake_request.json")
         if req:
-            return ("session", {"reason": req.get("reason", "trigger"),
-                                "trigger": req})
+            wa = req.get("wake_as") or {}
+            rt = self._sanitize_run_type(wa.get("run_type")) or "session"
+            return (rt, {"reason": req.get("reason", "trigger"),
+                         "trigger": req,
+                         "run_type_hint": wa.get("run_type"),
+                         "model_choice": wa.get("model"),
+                         "effort_choice": wa.get("effort"),
+                         "charter_file": wa.get("charter")})
 
         # The agent's own recurring schedule.
         sched_f = self.state / "schedule.json"

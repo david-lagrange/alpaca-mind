@@ -18,7 +18,12 @@ triggers.json (agent-written at session close):
 {
   "triggers": [
     {"id": "breakdown", "type": "price_below", "symbol": "SPY",
-     "value": 500, "note": "invalidates thesis", "protective": true},
+     "value": 500, "note": "invalidates thesis", "protective": true,
+     "model": "fable", "effort": "xhigh",
+     "charter": "prompts/CRISIS.md"},   # optional wake-as fields: the
+                                        # wake runs as the mind, effort,
+                                        # run_type, and charter the
+                                        # trigger names
     {"id": "iv-pop", "type": "pct_move", "symbol": "QQQ",
      "value": 2.5, "window_min": 15},
     {"id": "fill", "type": "order_fill", "order_id": "abc-123"}
@@ -116,15 +121,24 @@ class Sentinel:
         return data.get("triggers", [])
 
     def request_wake(self, reason: str, context: dict,
-                     protective: bool = False) -> None:
-        """Debounced: at most one pending wake request at a time."""
+                     protective: bool = False,
+                     wake_as: dict | None = None) -> None:
+        """Debounced: at most one pending wake request at a time.
+        wake_as (run_type/model/effort/charter) carries the agent's own
+        choice of mind and frame for the wake — a sensor the agent armed
+        has the same choice rights as a slot the agent scheduled."""
         f = self.state / "wake_request.json"
         if f.exists():
             return
-        f.write_text(json.dumps({
+        body = {
             "requested_at": datetime.now(timezone.utc).isoformat(),
             "reason": reason, "context": context, "protective": protective,
-        }, indent=2, default=str))
+        }
+        if wake_as:
+            body["wake_as"] = {k: wake_as[k] for k in
+                               ("run_type", "model", "effort", "charter")
+                               if wake_as.get(k)}
+        f.write_text(json.dumps(body, indent=2, default=str))
         self.ledger.record_event("sentinel", "wake_requested",
                                  {"reason": reason, **context})
         log(f"WAKE requested: {reason}")
@@ -268,7 +282,8 @@ class Sentinel:
                 self.request_wake(
                     f"TRIGGER {tid}: {t.get('note') or t.get('type')}",
                     {"trigger": t, "detail": detail},
-                    protective=bool(t.get("protective")))
+                    protective=bool(t.get("protective")),
+                    wake_as=t)
 
     @staticmethod
     def _tval(t: dict):

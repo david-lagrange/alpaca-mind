@@ -14,14 +14,21 @@ manifest.json:
     {"id": "premarket-watch", "script": "premarket_watch.py",
      "cadence_minutes": 15, "timeout_seconds": 60, "max_wakes_per_day": 2,
      "enabled": true, "note": "why this exists",
-     "not_before": "...", "not_after": "..."}     # optional ISO windows
+     "not_before": "...", "not_after": "...",     # optional ISO windows
+     "run_type": "...", "model": "...", "effort": "...",
+     "charter": "prompts/X.md"}   # optional wake-as defaults: fires
+                                  # from this scanner wake the agent as
+                                  # the mind and charter named here
   ]
 }
 
 Contract for the script: run, print ONE JSON line as the LAST line of
 stdout, exit 0:
   {"wake": true|false, "reason": "<why, for the wake context>",
-   "protective": false, "payload": {...}}         # payload optional
+   "protective": false, "payload": {...},         # payload optional
+   "run_type": "...", "model": "...", "effort": "...", "charter": "..."}
+     # optional per-fire wake-as choice — overrides the manifest's
+     # defaults; the moment knows more than the registration did
 A run that is structurally unable to fire (market closed, data source
 dark) may return {"noop": true} — it counts as a run but does not
 consume shadow validation. Persistent state dir per scanner in
@@ -168,6 +175,10 @@ class ScannerRunner:
                 "enabled": bool(e.get("enabled", True)),
                 "not_before": _parse_iso(e.get("not_before")),
                 "not_after": _parse_iso(e.get("not_after")),
+                # wake-as defaults for this scanner's fires (a fire's
+                # own result fields override these)
+                "run_type": e.get("run_type"), "model": e.get("model"),
+                "effort": e.get("effort"), "charter": e.get("charter"),
             })
         return out
 
@@ -328,11 +339,19 @@ class ScannerRunner:
                     self.health["global_wakes_today"] += 1
                     self.ledger.record_event("sentinel", "scanner_fire",
                                              {"id": sid, "reason": reason})
+                    # The fire's own wake-as choice wins over the
+                    # manifest's default — the moment knows more than
+                    # the registration did.
+                    wake_as = {
+                        k: (result.get(k) or r["m"].get(k))
+                        for k in ("run_type", "model", "effort", "charter")
+                        if (result.get(k) or r["m"].get(k))}
                     self.request_wake(
                         f"SCANNER {sid}: {reason}",
                         {"scanner": sid,
                          "payload": result.get("payload")},
-                        protective=bool(result.get("protective")))
+                        protective=bool(result.get("protective")),
+                        wake_as=wake_as or None)
             self._save_health()
 
     def _failure(self, m: dict, st: dict, now: float,

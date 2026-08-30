@@ -5,7 +5,7 @@ window to watch it live.**
 
 alpaca-mind deploys a self-evolving AI trading agent onto your own AWS
 account, trading options (and equities) on [Alpaca](https://alpaca.markets).
-*(The whole project on one page: [`ONEPAGER.md`](ONEPAGER.md).)*
+*(The whole project on one page: [`ONEPAGER.pdf`](ONEPAGER.pdf) · [plain text](ONEPAGER.txt).)*
 It is not a bot with a strategy. It is an *institution*: an agent that
 schedules its own runs, chooses how deeply to think, writes and revises
 its own playbooks, builds its own market sensors that watch while it

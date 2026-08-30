@@ -1,0 +1,13 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Runtime state (databases, request markers) — never committed
+data/*
+!data/.gitkeep
+
+# Local environment files
+.env
+.env.*

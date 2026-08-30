@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme variables — the single source of truth for the interface's look.
+ *
+ * Colors are stored as raw RGB triplets so Tailwind can apply opacity
+ * modifiers (e.g. `bg-surface/50`). The semantic names map through
+ * tailwind.config.ts; extend this set (rather than hard-coding hex
+ * values in components) when new roles are needed.
+ *
+ * The default theme is dark, low-glare, and professional: near-black
+ * ground, soft neutral text, one restrained accent, and distinct
+ * gain/loss hues for financial values.
+ */
+:root {
+  --color-bg: 12 13 16; /* page ground */
+  --color-surface: 20 22 27; /* cards, panels */
+  --color-raised: 28 31 38; /* hover states, inputs */
+  --color-edge: 42 46 55; /* borders, dividers */
+  --color-ink: 228 230 235; /* primary text */
+  --color-muted: 148 155 168; /* secondary text */
+  --color-faint: 94 100 112; /* tertiary text, captions */
+  --color-accent: 122 162 247; /* interactive, emphasis */
+  --color-gain: 88 190 130; /* positive P&L */
+  --color-loss: 232 105 105; /* negative P&L */
+  --color-warn: 224 175 104; /* caution states */
+
+  /* Self-contained system font stacks; no external font loading. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: rgb(var(--color-bg));
+  color: rgb(var(--color-ink));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: rgb(var(--color-accent) / 0.35);
+}

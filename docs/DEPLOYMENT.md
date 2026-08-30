@@ -25,6 +25,27 @@ Then interview:
   (COSTS.md).
 - **A UI password** (you can generate one) and, later, whether they
   want a domain in front of the UI.
+- **The interface.** Tell them what the UI manager is commissioned to
+  build and keep evolving by default: live account tracking with an
+  equity curve; every trade with its thesis and honest P&L; lessons
+  learned, each with a deep-dive report; how the mind is compounding
+  its knowledge over time; problems it hit and how it overcame them;
+  live trackers for open trades; and the mind's own schedule. Then
+  ask: *"Is there anything else important to you that the UI manager
+  should be actively displaying?"* Additions go into
+  `ui-mission/memory/owner-defaults.md` — and anything can be changed
+  later by leaving a message in the interface's inbox.
+- **Styling.** Describe the default: a clean, premium, professional
+  dark interface — near-black surfaces, one warm gold accent,
+  restrained and spacious (`ui/STYLE.md`). Ask if they'd like a
+  different look (a light theme, a color family, a whole aesthetic).
+  Preferences go into `ui/STYLE.md` and the CSS variables in
+  `ui/app/globals.css`.
+
+For either customization: edit the files in your human's fork and
+deploy with `RepoUrl=<fork>` (MISSIONS.md documents the mechanic), or
+deploy the defaults and steer later through the inbox — the UI
+manager can change anything, including its own navigation and theme.
 
 ## 1. Prerequisites check (run these; walk through gaps)
 

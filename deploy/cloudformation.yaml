@@ -4,10 +4,12 @@
 #
 # One CloudFormation stack contains every billable resource this project
 # needs: a VPC, one EC2 instance, a security group, an IAM role/instance
-# profile, and (optionally) an Elastic IP. Deleting the stack removes all of
-# it — every resource carries an explicit DeletionPolicy of Delete, the root
-# volume terminates with the instance, and nothing (buckets, snapshots,
-# volumes) is retained. Easy total removal is a product promise.
+# profile, a private S3 backup bucket, and (optionally) an Elastic IP.
+# Deleting the stack removes all of it — every resource carries an explicit
+# DeletionPolicy of Delete and the root volume terminates with the instance.
+# The one removal nuance: S3 refuses to delete a non-empty bucket, so the
+# removal protocol empties the backup bucket first (docs/REMOVAL.md covers
+# it). Easy total removal is a product promise.
 #
 # BEFORE creating the stack, put the secrets into SSM Parameter Store as
 # SecureString parameters under the prefix you pass as SsmPrefix
@@ -281,6 +283,23 @@ Resources:
                   - ssm:GetParametersByPath
                 Resource:
                   - Fn::Sub: "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SsmPrefix}/*"
+        - PolicyName: write-nightly-backups
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Write and read back its own backups; expiry is the
+              # bucket lifecycle rule's job, so no delete permission.
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource:
+                  - Fn::Sub: "arn:${AWS::Partition}:s3:::${BackupBucket}/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - Fn::Sub: "arn:${AWS::Partition}:s3:::${BackupBucket}"
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -288,6 +307,41 @@ Resources:
     Properties:
       Roles:
         - Ref: InstanceRole
+
+  # ---------------------------------------------------------------------------
+  # Backups: a private, encrypted bucket the instance writes one archive into
+  # every night — the agents' evolved minds, the ledger, and the built UI are
+  # weeks of irreplaceable work, and an instance is replaceable hardware. The
+  # lifecycle rule IS the rolling window: objects expire after 7 days, so the
+  # bucket self-cleans and its cost stays at pennies. No public access, ever.
+  # ---------------------------------------------------------------------------
+
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: rolling-window
+            Status: Enabled
+            ExpirationInDays: 7
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${AWS::StackName}-backups"
 
   # ---------------------------------------------------------------------------
   # The instance. User-data is deliberately minimal: install git, clone the
@@ -350,6 +404,7 @@ Resources:
             export CLAUDE_CLI_VERSION="${ClaudeCliVersion}"
             export UI_PORT="${UiPort}"
             export AWS_REGION="${AWS::Region}"
+            export BACKUP_BUCKET="${BackupBucket}"
             bash /opt/alpaca-mind-src/deploy/setup.sh
 
   # Optional stable address. An Elastic IP associated with a running instance
@@ -425,6 +480,14 @@ Outputs:
     Description: Open a shell on the instance (no SSH; SSM Session Manager).
     Value:
       Fn::Sub: "aws ssm start-session --target ${Instance}"
+
+  BackupBucketName:
+    Description: >-
+      S3 bucket receiving the nightly mind backup (7-day rolling window).
+      Restore procedure in docs/OPERATIONS.md; emptied by the removal
+      protocol before stack deletion.
+    Value:
+      Ref: BackupBucket
 
   SetupLogHint:
     Description: Where to watch first-boot setup progress from a session shell.

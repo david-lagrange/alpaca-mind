@@ -367,9 +367,19 @@ done
 # ----------------------------------------------------------------------------
 
 log "installing systemd units"
-for unit in "$SRC_DIR"/deploy/units/*.service "$SRC_DIR"/deploy/units/*.path; do
+for unit in "$SRC_DIR"/deploy/units/*.service "$SRC_DIR"/deploy/units/*.path \
+            "$SRC_DIR"/deploy/units/*.timer; do
   install -m 644 "$unit" "/etc/systemd/system/$(basename "$unit")"
 done
+
+# Nightly S3 backup: root-owned script + config from the stack's values.
+# No BACKUP_BUCKET (an older stack) means the script no-ops harmlessly.
+install -m 750 "$SRC_DIR/deploy/backup.sh" "$ENGINE_HOME/backup.sh"
+cat > /etc/default/alpaca-mind-backup <<EOF
+BACKUP_BUCKET=${BACKUP_BUCKET:-}
+AWS_REGION=${AWS_REGION:-}
+EOF
+chmod 600 /etc/default/alpaca-mind-backup
 
 # The port-redirect unit reads its ports from this file (see step 12).
 cat > /etc/default/alpaca-mind-redirect <<EOF
@@ -385,6 +395,7 @@ systemctl enable --now mind-sentinel.service
 systemctl enable --now ui-supervisor.service
 systemctl enable --now ui-web.service
 systemctl enable --now ui-restart.path
+systemctl enable --now mind-backup.timer
 
 # Re-runs may have changed engine code, config, or .env contents; restart the
 # daemons so they pick the changes up.

@@ -1,0 +1,10 @@
+[Unit]
+Description=alpaca-mind nightly backup to S3
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/alpaca-mind/backup.sh
+Nice=10
+IOSchedulingClass=idle

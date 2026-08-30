@@ -1,0 +1,12 @@
+[Unit]
+Description=Nightly alpaca-mind backup (midnight UTC, rolling S3 window)
+
+[Timer]
+OnCalendar=*-*-* 00:00:00 UTC
+# Catch up after downtime: a missed night runs at next boot.
+Persistent=true
+# Small jitter so fleets of deployments don't hit S3 in one herd.
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target

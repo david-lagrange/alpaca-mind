@@ -33,11 +33,20 @@ set -euo pipefail
 # Configuration
 # ----------------------------------------------------------------------------
 
+# Re-runs remember the stack's original parameters: user-data passes
+# them on first boot, a hand re-run usually doesn't — and a re-run that
+# silently falls back to defaults points at the wrong SSM prefix.
+# Explicit environment still wins over the remembered values.
+if [ -f /etc/default/alpaca-mind-setup ]; then
+  # shellcheck disable=SC1091
+  . /etc/default/alpaca-mind-setup
+fi
+
 SRC_DIR="${SRC_DIR:-/opt/alpaca-mind-src}"
 ENGINE_HOME=/opt/alpaca-mind
-SSM_PREFIX="${SSM_PREFIX:-/alpaca-mind}"
-CLAUDE_CLI_VERSION="${CLAUDE_CLI_VERSION:-2.1.238}"
-UI_PORT="${UI_PORT:-80}"
+SSM_PREFIX="${SSM_PREFIX:-${SAVED_SSM_PREFIX:-/alpaca-mind}}"
+CLAUDE_CLI_VERSION="${CLAUDE_CLI_VERSION:-${SAVED_CLAUDE_CLI_VERSION:-2.1.238}}"
+UI_PORT="${UI_PORT:-${SAVED_UI_PORT:-80}}"
 UI_APP_PORT=3000   # unprivileged port the Next.js server binds; UI_PORT is redirected to it
 
 log() { echo "[alpaca-mind setup] $*"; }
@@ -53,6 +62,9 @@ if [ ! -d "$SRC_DIR" ]; then
 fi
 
 # Region: prefer the environment (user-data passes it), fall back to IMDSv2.
+if [ -z "${AWS_REGION:-}" ] && [ -n "${SAVED_AWS_REGION:-}" ]; then
+  AWS_REGION="$SAVED_AWS_REGION"
+fi
 if [ -z "${AWS_REGION:-}" ]; then
   IMDS_TOKEN="$(curl -fsS -X PUT http://169.254.169.254/latest/api/token \
     -H 'X-aws-ec2-metadata-token-ttl-seconds: 300')"
@@ -444,6 +456,15 @@ if [ "$UI_PORT" = "80" ]; then
 else
   UI_URL="http://${PUBLIC_IP}:${UI_PORT}/"
 fi
+
+# Remember this run's parameters for future hand re-runs.
+cat > /etc/default/alpaca-mind-setup <<EOF
+SAVED_SSM_PREFIX=${SSM_PREFIX}
+SAVED_CLAUDE_CLI_VERSION=${CLAUDE_CLI_VERSION}
+SAVED_UI_PORT=${UI_PORT}
+SAVED_AWS_REGION=${AWS_REGION}
+EOF
+chmod 644 /etc/default/alpaca-mind-setup
 
 log "============================================================"
 log " alpaca-mind setup complete"

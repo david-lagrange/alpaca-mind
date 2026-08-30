@@ -26,7 +26,12 @@
 # =============================================================================
 set -euo pipefail
 
+# The config file supplies defaults; explicit environment wins.
+ENV_BUCKET="${BACKUP_BUCKET:-}"
+ENV_REGION="${AWS_REGION:-}"
 [ -f /etc/default/alpaca-mind-backup ] && . /etc/default/alpaca-mind-backup
+BACKUP_BUCKET="${ENV_BUCKET:-${BACKUP_BUCKET:-}}"
+AWS_REGION="${ENV_REGION:-${AWS_REGION:-}}"
 if [ -z "${BACKUP_BUCKET:-}" ]; then
   echo "no BACKUP_BUCKET configured — backups disabled on this deployment"
   exit 0

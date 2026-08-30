@@ -35,17 +35,63 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function unauthorized(challenge = true): NextResponse {
+function unauthorized(challenge = true, publicSite = false): NextResponse {
   // The WWW-Authenticate header is what makes a browser throw its
   // sign-in dialog. On a public showcase page, a background fetch to a
   // gated API must fail QUIETLY (plain 401, component shows its
   // owner-only state) — otherwise one widget interrogates every
   // visitor with a popup over a page that is meant to be open.
-  return new NextResponse("Authentication required.", {
+  if (!challenge) {
+    return new NextResponse("Authentication required.", { status: 401 });
+  }
+  // A deliberate navigation to a gated page gets a real page under the
+  // browser's dialog: cancelling the prompt must never strand a visitor
+  // on a bare wall of text with no way back.
+  const backLink = publicSite
+    ? `<p><a href="/">&larr; Back to the open site</a> &middot;
+         <a href="/inbox">Try signing in again</a></p>`
+    : `<p><a href="/">Try again</a></p>`;
+  const lede = publicSite
+    ? `This page is the owner&rsquo;s inbox &mdash; where requests steer
+       what the interface shows. It takes a password; the rest of the
+       site is open to everyone.`
+    : `This interface is private to its owner and takes a password.`;
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>alpaca-mind — sign in</title>
+    <style>
+      body { margin: 0; display: grid; place-items: center; min-height: 100vh;
+             background: #0c0d10; color: #e4e6eb;
+             font-family: ui-sans-serif, system-ui, sans-serif; }
+      main { text-align: center; padding: 2rem; max-width: 34rem; }
+      h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.75rem; }
+      p { color: #949ba8; line-height: 1.6; margin: 0 0 1rem; }
+      a { color: #e8bd2d; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      code { font-family: ui-monospace, monospace; background: #1c1f26;
+             border: 1px solid #2a2e37; border-radius: 4px;
+             padding: 0.1rem 0.35rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Sign in required</h1>
+      <p>${lede}</p>
+      <p>Username is <code>owner</code>. If the sign-in box didn&rsquo;t
+         appear or was dismissed, use the link below.</p>
+      ${backLink}
+    </main>
+  </body>
+</html>`;
+  return new NextResponse(html, {
     status: 401,
-    headers: challenge
-      ? { "WWW-Authenticate": `Basic realm="${REALM}", charset="UTF-8"` }
-      : {},
+    headers: {
+      "WWW-Authenticate": `Basic realm="${REALM}", charset="UTF-8"`,
+      "Content-Type": "text/html; charset=utf-8",
+    },
   });
 }
 
@@ -129,7 +175,7 @@ export function middleware(request: NextRequest): NextResponse {
 
   const header = request.headers.get("authorization") ?? "";
   if (!header.startsWith("Basic ")) {
-    return unauthorized(challenge);
+    return unauthorized(challenge, publicMode);
   }
 
   let user = "";
@@ -137,18 +183,18 @@ export function middleware(request: NextRequest): NextResponse {
   try {
     const decoded = atob(header.slice(6).trim());
     const sep = decoded.indexOf(":");
-    if (sep === -1) return unauthorized(challenge);
+    if (sep === -1) return unauthorized(challenge, publicMode);
     user = decoded.slice(0, sep);
     pass = decoded.slice(sep + 1);
   } catch {
-    return unauthorized(challenge);
+    return unauthorized(challenge, publicMode);
   }
 
   // Evaluate both comparisons unconditionally to keep timing uniform.
   const userOk = safeEqual(user, USERNAME);
   const passOk = safeEqual(pass, password);
   if (!(userOk && passOk)) {
-    return unauthorized(challenge);
+    return unauthorized(challenge, publicMode);
   }
 
   return NextResponse.next();

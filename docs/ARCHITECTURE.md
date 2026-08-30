@@ -21,7 +21,9 @@ fully before explaining it to your human or changing anything.*
 │      journal/, memory/, strategies/, scanners/, state/             │
 │      (schedule.json, wake.json, triggers.json, handoff.md, HALT)   │
 │    /srv/mind/ledger.db   its quantitative memory                   │
-│    /srv/mind/logs        full session transcripts + prompt snaps   │
+│    /srv/mind/logs        session transcripts + prompt snaps +      │
+│      daily/ (structured JSONL logs, one file per UTC day — every   │
+│      engine component; the UI's Logs page renders them)            │
 │    /srv/mind/lab         its own python venv (pip-extendable)      │
 │                                                                    │
 │  user `ui` — THE UI MANAGER                                        │

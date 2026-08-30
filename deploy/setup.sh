@@ -292,6 +292,8 @@ CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
 LEDGER_PATH=/srv/mind/ledger.db
 UI_DB_PATH=/srv/ui/app/data/ui.db
 UI_RUN_REQUEST_PATH=/srv/ui/app/data/run_request.json
+MIND_LOGS_DIR=/srv/mind/logs
+UI_LOGS_DIR=/srv/ui/logs
 EOF
 
 unset ALPACA_API_KEY ALPACA_SECRET_KEY CLAUDE_CODE_OAUTH_TOKEN UI_PASSWORD
@@ -330,8 +332,13 @@ fi
 # Session logs: setgid so new files keep the group; default ACL so they are
 # born group-readable.
 install -d -o mind -g ledger-readers -m 2750 /srv/mind/logs
+install -d -o mind -g ledger-readers -m 2750 /srv/mind/logs/daily
 setfacl -R -m "g:ledger-readers:rX" /srv/mind/logs
 setfacl -R -d -m "g:ledger-readers:rX" /srv/mind/logs
+
+# The UI side keeps the same structured daily logs (web server and
+# UI-manager supervisor both write there as the ui user).
+install -d -o ui -g ui -m 750 /srv/ui/logs /srv/ui/logs/daily
 
 # ----------------------------------------------------------------------------
 # 10. Engine configuration — root-owned copies from the source checkout so a

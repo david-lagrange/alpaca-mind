@@ -42,6 +42,44 @@ run() { aws ssm send-command --instance-ids $IID \
   `sudo -u mind bash -lc 'MIND_CONFIG=/opt/alpaca-mind/engine/config/mind.yaml /opt/alpaca-mind/venv/bin/python /opt/alpaca-mind/engine/trade.py reconcile'`
   → `divergence_count: 0` is the healthy answer.
 
+## Logs — the system's nervous system
+
+Every component writes structured JSONL, split by UTC day, alongside
+its human-readable journald stream:
+
+- **Mind side:** `/srv/mind/logs/daily/YYYY-MM-DD.jsonl` — components
+  `supervisor`, `sentinel`, `scanners`, `trade`, `venue`, `ledger`.
+- **UI side:** `/srv/ui/logs/daily/YYYY-MM-DD.jsonl` — components
+  `supervisor` (the UI manager's engine) and `web` (the Next.js app).
+
+Each record: `ts`, `level` (`debug|info|warn|error`), `component`,
+`event` (snake_case), plus key-values — errors carry `error` and
+`trace`, and trade activity carries `session_id` so a line correlates
+to the agent session that caused it. The **Logs page in the UI**
+(Mind / UI tabs) renders both streams with filters and a live tail —
+start there. From a shell, `jq` over the daily file answers anything:
+
+```bash
+run "jq -r 'select(.level==\"error\")' /srv/mind/logs/daily/$(date -u +%F).jsonl"
+```
+
+`LOG_LEVEL` (env, default `info`) filters only the journald stream;
+the daily files always receive every level, debug included — the
+record that explains a failure is usually written before anyone knows
+a failure is coming.
+
+**The logs cannot fill the disk — by construction.** Three
+self-enforcing bounds (env-overridable): a per-day file cap
+(`JSONLOG_MAX_FILE_MB`, 64 — a runaway loop hits the ceiling, one
+`log_file_capped` marker is written, the rest of that day's records
+drop from the file while journald keeps flowing), a total-directory
+cap (`JSONLOG_MAX_TOTAL_MB`, 512 — oldest days deleted first), and
+retention (`JSONLOG_KEEP_DAYS`, 7). Retention and the directory cap
+enforce themselves on day rollover inside every writer, so no
+housekeeping job is a single point of disk-safety failure. journald
+(`journalctl -u <unit>`) remains the operator's low-level view — it
+has its own systemd size caps — and survives even a broken file sink.
+
 ## Diagnostic patterns
 
 | Symptom | Look at |

@@ -36,7 +36,7 @@ window answers:
   results — losses as plainly as wins)
 
 Then the close-out, per your quality law (CLAUDE.md — build passes,
-every route verified, mobile-first, honest data states, fresh-eyes
-pass): build, verify, `data/restart_request.json`, update
-`kv.next_run_at`, commit your workspace with a plain summary of what
-you built and why.
+every route verified, mobile-first, honest data states, everything
+you build logs through `lib/log.ts`, fresh-eyes pass): build, verify,
+`data/restart_request.json`, update `kv.next_run_at`, commit your
+workspace with a plain summary of what you built and why.

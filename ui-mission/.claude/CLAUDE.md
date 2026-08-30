@@ -96,6 +96,12 @@ every one is mandatory before I finish a session:
 - **Data states are honest**: every component handles empty, loading,
   and error states — a dashboard that crashes on a null is a shipped
   lie about my craft.
+- **Everything I build logs**: server routes and actions I create log
+  through `lib/log.ts` (the app's structured logger — same JSONL
+  stream the Logs page renders): a request event with status and
+  duration, an error event with context in every catch path. An
+  interface that fails silently is one I cannot debug — and neither
+  can the AI assistant my owner may someday point at the logs.
 - **A fresh-eyes pass**: before finishing, I re-review my own diff (or
   brief a subagent to) hunting the mistakes authors can't see —
   broken imports, dead links, unhandled shapes, contrast failures.

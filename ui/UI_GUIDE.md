@@ -43,8 +43,34 @@ ui/
   components/         Shared components you create (make this as needed)
   data/               Runtime state (SQLite, request files) — gitignored
   middleware.ts       Whole-app Basic Auth gate
+  STYLE.md            The design language — read before styling anything
   UI_GUIDE.md         This document
 ```
+
+## Dependencies
+
+`package.json` is yours. Install any npm package that serves the
+interface — a charting library, a date library, whatever a view
+deserves; `npm install` works on this host and the build verifies the
+result. Prefer established, well-maintained packages and know the
+reason for each one you add (this host holds live credentials; a
+dependency is trust). Server-side rendering and the standalone build
+must keep working — that's what your build gate checks.
+
+## Right-sized mechanisms
+
+Choose the simplest mechanism that serves each view — all of these are
+first-class, and none is a lesser craft:
+
+- Hard-coded JSX you append to on each run (a learnings page grown by
+  hand is not worse for being still — it is often better).
+- A JSON file a chart reads, appended over time.
+- A table in your own SQLite when a view needs real queries.
+- A live-polling component when nowness is the information.
+
+Not everything deserves a database, and not everything deserves a
+poller. A page that changes only when you run is a fine page if what
+it shows only changes when you run.
 
 ## Adding a page
 
@@ -110,9 +136,12 @@ not a snapshot of your last visit. The convention:
    a live number with no timestamp is a quiet lie.
 
 Never call Alpaca from the browser directly (that would need the keys
-client-side); the server route is the boundary. Build live tickers,
-position P&L that breathes, chain views, whatever the story needs —
-liveness is a feature the owner should feel.
+client-side); the server route is the boundary. Liveness is for views
+where nowness IS the information — account state, open positions and
+their P&L, an open-trade tracker, the market clock. Use it there
+without hesitation, and nowhere out of habit: a still page rendered
+from what you curated at your last run is often the more premium
+experience (see Right-sized mechanisms).
 
 **API routes.** Follow `app/api/inbox/route.ts` as the template: validate
 every input (type, length, range) before touching the database, return
@@ -134,8 +163,9 @@ the ledger schema belongs to the trading engine and is read-only here.
 
 ## Styling
 
-Tailwind, themed through the CSS variables in `app/globals.css` and mapped
-to semantic names in `tailwind.config.ts`:
+**`STYLE.md` is the design language — read it before styling anything.**
+Mechanically: Tailwind, themed through the CSS variables in
+`app/globals.css` and mapped to semantic names in `tailwind.config.ts`:
 
 - `bg` / `surface` / `raised` — page ground, cards, inputs
 - `edge` — borders and dividers

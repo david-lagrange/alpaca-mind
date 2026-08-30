@@ -11,8 +11,9 @@
  * values in components) when new roles are needed.
  *
  * The default theme is dark, low-glare, and professional: near-black
- * ground, soft neutral text, one restrained accent, and distinct
- * gain/loss hues for financial values.
+ * ground, soft neutral text, one restrained warm-gold accent, and
+ * distinct gain/loss hues for financial values. The intended feel is
+ * documented in STYLE.md — read it before restyling.
  */
 :root {
   --color-bg: 12 13 16; /* page ground */
@@ -22,10 +23,10 @@
   --color-ink: 228 230 235; /* primary text */
   --color-muted: 148 155 168; /* secondary text */
   --color-faint: 94 100 112; /* tertiary text, captions */
-  --color-accent: 122 162 247; /* interactive, emphasis */
+  --color-accent: 232 189 45; /* interactive, emphasis — warm gold */
   --color-gain: 88 190 130; /* positive P&L */
   --color-loss: 232 105 105; /* negative P&L */
-  --color-warn: 224 175 104; /* caution states */
+  --color-warn: 231 140 72; /* caution states — orange, distinct from accent */
 
   /* Self-contained system font stacks; no external font loading. */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,

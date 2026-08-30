@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -53,6 +54,7 @@ import yaml
 ENGINE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE_DIR))
 
+from jsonlog import get_logger  # noqa: E402
 from ledger import Ledger  # noqa: E402
 
 POLL_SECONDS = 5
@@ -68,11 +70,6 @@ EMERGENCY_CHARTER = (
     "state/handoff.md, commit, and report plainly what happened.\n")
 
 
-def log(msg: str) -> None:
-    print(f"[{datetime.now(timezone.utc).isoformat(timespec='seconds')}] {msg}",
-          flush=True)
-
-
 class Supervisor:
     MODEL_CHOICES = {"fable", "opus", "sonnet", "haiku"}
     EFFORT_CHOICES = {"low", "medium", "high", "xhigh", "max"}
@@ -80,6 +77,7 @@ class Supervisor:
     def __init__(self, cfg: dict, cfg_path: str):
         self.cfg = cfg
         self.cfg_path = str(Path(cfg_path).resolve())
+        self.log = get_logger("supervisor")
         self.role = cfg.get("role", "trader")
         self.workspace = Path(cfg["paths"]["workspace"])
         self.state = Path(cfg["paths"]["state"])
@@ -94,6 +92,8 @@ class Supervisor:
         self.claude_bin = self._find_claude()
         self.retry_count = 0
         self._sched_warned = False
+        self._halt_active = False
+        self._badfile_warned: set[str] = set()
 
     @staticmethod
     def _find_claude() -> str:
@@ -115,7 +115,8 @@ class Supervisor:
                                   capture_output=True, text=True, timeout=15)
             m = re.match(r"(\d+)\.(\d+)\.(\d+)", (outp.stdout or "").strip())
             return tuple(int(x) for x in m.groups()) if m else (0, 0, 0)
-        except Exception:
+        except Exception as e:
+            self.log.warn("cli_version_probe_failed", error=repr(e))
             return (0, 0, 0)
 
     # ------------------------------------------------------------------
@@ -127,13 +128,24 @@ class Supervisor:
         if not f.exists():
             return None
         try:
-            return json.loads(f.read_text())
+            data = json.loads(f.read_text())
+            self._badfile_warned.discard(name)
+            return data
         except json.JSONDecodeError:
+            if name not in self._badfile_warned:
+                self._badfile_warned.add(name)
+                self.log.warn("state_file_unparseable", file=name)
             return None
 
     def wake_due(self) -> tuple[str, dict] | None:
         if (self.state / "HALT").exists():
+            if not self._halt_active:
+                self._halt_active = True
+                self.log.info("halt_active")
             return None  # the owner's kill switch: nothing runs
+        if self._halt_active:
+            self._halt_active = False
+            self.log.info("halt_cleared")
         if self.role == "ui":
             return self.ui_wake_due()
 
@@ -142,7 +154,10 @@ class Supervisor:
         if not self.ledger.has_successful_session():
             last = self.ledger.last_session_ts() or 0
             if time.time() - last < 120:
+                self.log.debug("awakening_hold",
+                               seconds_since_attempt=round(time.time() - last))
                 return None
+            self.log.info("awakening_due")
             return ("awakening", {"reason": "first awakening"})
 
         # Debounce: never launch within the minimum interval of the
@@ -150,6 +165,9 @@ class Supervisor:
         last = self.ledger.last_session_ts() or 0
         min_gap = self.cfg["sessions"]["min_wake_interval_minutes"] * 60
         if time.time() - last < min_gap:
+            self.log.debug("min_gap_hold",
+                           seconds_since_last=round(time.time() - last),
+                           min_gap_s=min_gap)
             return None
 
         # Sentinel wake request (a trigger fired, a fill landed). The
@@ -160,6 +178,14 @@ class Supervisor:
         if req:
             wa = req.get("wake_as") or {}
             rt = self._sanitize_run_type(wa.get("run_type")) or "session"
+            self.log.info("wake_request_serviced",
+                          reason=req.get("reason", "trigger"),
+                          protective=req.get("protective"),
+                          run_type=rt,
+                          wake_as_run_type=wa.get("run_type"),
+                          wake_as_model=wa.get("model"),
+                          wake_as_effort=wa.get("effort"),
+                          wake_as_charter=wa.get("charter"))
             return (rt, {"reason": req.get("reason", "trigger"),
                          "trigger": req,
                          "run_type_hint": wa.get("run_type"),
@@ -181,8 +207,8 @@ class Supervisor:
                 # default clock must not silently resurrect against the
                 # agent's will just because it fat-fingered a JSON edit.
                 self._sched_warned = True
-                log("schedule.json present but unparseable — "
-                    "aliveness floor only")
+                self.log.warn("schedule_unparseable", file="schedule.json",
+                              fallback="aliveness_floor_only")
                 self.ledger.record_event("supervisor", "schedule_unparseable",
                                          {})
             due = self.reflection_backstop_due()
@@ -202,6 +228,12 @@ class Supervisor:
                     "schedule_trust_ceiling_hours", 96)))
             if fire and guard_why is None:
                 rt = self._sanitize_run_type(wake.get("run_type")) or "session"
+                self.log.info("one_shot_wake", run_type=rt,
+                              scheduled=str(raw),
+                              reason=wake.get("reason", "scheduled wake"),
+                              model=wake.get("model"),
+                              effort=wake.get("effort"),
+                              charter=wake.get("charter"))
                 return (rt, {"reason": wake.get("reason", "scheduled wake"),
                              "run_type_hint": wake.get("run_type"),
                              "model_choice": wake.get("model"),
@@ -209,6 +241,8 @@ class Supervisor:
                              "charter_file": wake.get("charter"),
                              "one_shot": True})
             if fire:
+                self.log.info("schedule_guard_wake", scheduled=str(raw),
+                              why=guard_why)
                 self.ledger.record_event(
                     "supervisor", "schedule_guard_wake",
                     {"scheduled": str(raw), "why": guard_why})
@@ -221,6 +255,9 @@ class Supervisor:
         else:
             if time.time() - last > \
                     self.cfg["sessions"]["default_wake_minutes"] * 60:
+                self.log.info("default_wake", cause="no_wake_file",
+                              minutes_since_last=round(
+                                  (time.time() - last) / 60))
                 return ("session", {"reason": "no wake.json on file — "
                                     "default wake",
                                     "forgot_schedule": True})
@@ -292,6 +329,11 @@ class Supervisor:
                 if self.ledger.last_finished_ts(rt) >= slot_dt.timestamp():
                     continue  # consumed
                 name = str(s.get("name") or rt)
+                self.log.info("slot_due", slot=name, run_type=rt,
+                              at_local_time=str(s["at_local_time"]),
+                              timezone=str(s.get("timezone") or "UTC"),
+                              model=s.get("model"), effort=s.get("effort"),
+                              charter=s.get("charter"))
                 return (rt, {
                     "reason": str(s.get("reason")
                                   or f"scheduled slot '{name}' (my own "
@@ -302,7 +344,9 @@ class Supervisor:
                     "charter_file": s.get("charter"),
                     "from_slot": name})
             except Exception as e:
-                log(f"schedule.json slot skipped (malformed): {e!r}")
+                self.log.warn("slot_skipped", error=repr(e),
+                              slot=(s.get("name") if isinstance(s, dict)
+                                    else str(s)[:80]))
                 continue
         return None
 
@@ -320,6 +364,10 @@ class Supervisor:
         last = float(rows[0]["t"] or 0) if rows else 0.0
         if not last or time.time() - last <= hrs * 3600:
             return None
+        self.log.info("backstop_fired",
+                      hours_since_reflection=round(
+                          (time.time() - last) / 3600, 1),
+                      backstop_hours=hrs)
         self.ledger.record_event("supervisor", "backstop_fired",
                                  {"hours_since_reflection":
                                   round((time.time() - last) / 3600, 1)})
@@ -344,15 +392,20 @@ class Supervisor:
         last = self.ledger.last_session_ts() or 0
         min_gap = self.cfg["sessions"]["min_wake_interval_minutes"] * 60
         if time.time() - last < min_gap:
+            self.log.debug("min_gap_hold",
+                           seconds_since_last=round(time.time() - last),
+                           min_gap_s=min_gap)
             return None
 
         trader_done = self.trader_ledger.query(
             "SELECT COUNT(*) c FROM sessions WHERE ts_end IS NOT NULL")
         trader_count = trader_done[0]["c"] if trader_done else 0
         if trader_count == 0:
+            self.log.debug("ui_hold_no_trader_sessions")
             return None
 
         if not self.ledger.has_successful_session():
+            self.log.info("construct_due", trader_sessions=trader_count)
             return ("construct", {"reason": (
                 "FIRST CONSTRUCTION: the trader has completed its first "
                 "session(s). Read the mission, the scaffold guide, and "
@@ -363,8 +416,10 @@ class Supervisor:
         if rr and Path(rr).exists():
             try:
                 Path(rr).unlink()
-            except OSError:
-                pass
+            except OSError as e:
+                self.log.warn("run_request_unlink_failed", error=repr(e),
+                              path=str(rr))
+            self.log.info("run_request_consumed", path=str(rr))
             return ("evolve", {"reason": (
                 "OWNER REQUEST: the inbox has at least one message waiting "
                 "and the owner asked for an immediate run. Read the inbox "
@@ -379,6 +434,10 @@ class Supervisor:
         if new_trader >= every_n or (
                 new_trader >= 1
                 and time.time() - last_ui_end > max_gap_h * 3600):
+            self.log.info("evolve_due", new_trader_sessions=new_trader,
+                          every_n=every_n, max_gap_hours=max_gap_h,
+                          hours_since_last_ui=round(
+                              (time.time() - last_ui_end) / 3600, 1))
             return ("evolve", {"reason": (
                 f"{new_trader} trader session(s) completed since the last "
                 "interface pass. Read what happened; grow the interface "
@@ -414,13 +473,17 @@ class Supervisor:
             try:
                 text = p.read_text(encoding="utf-8")
                 if text.strip():
+                    self.log.debug("charter_resolved", path=str(p),
+                                   run_type=run_type)
                     return text
             except OSError:
                 continue
         self.ledger.record_event("supervisor", "charter_missing",
                                  {"run_type": run_type,
                                   "charter": str(ctx.get("charter_file"))})
-        log(f"charter missing for run type '{run_type}' — emergency charter")
+        self.log.error("charter_missing", run_type=run_type,
+                       charter=str(ctx.get("charter_file")),
+                       fallback="emergency_charter")
         return EMERGENCY_CHARTER
 
     def build_prompt(self, run_type: str, ctx: dict) -> str:
@@ -455,14 +518,14 @@ class Supervisor:
         models = self.cfg.get("models") or {}
         choice = ctx.get("model_choice")
         if choice and str(choice).lower() not in self.MODEL_CHOICES:
-            log(f"ignoring unknown model choice {choice!r}")
+            self.log.warn("model_choice_ignored", choice=str(choice)[:40])
             choice = None
         alias = (str(choice).lower() if choice else None) \
             or models.get(ctx.get("run_type_hint") or run_type) \
             or models.get("default", "opus")
         echoice = ctx.get("effort_choice")
         if echoice and str(echoice).lower() not in self.EFFORT_CHOICES:
-            log(f"ignoring unknown effort choice {echoice!r}")
+            self.log.warn("effort_choice_ignored", choice=str(echoice)[:40])
             echoice = None
         effort = (str(echoice).lower() if echoice else None) \
             or (models.get("effort") or {}).get(
@@ -475,6 +538,7 @@ class Supervisor:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         transcript = self.logs / f"{stamp}-{run_type}.jsonl"
         prompt = self.build_prompt(run_type, ctx)
+        slog = self.log.bind(session_id=session_uuid, run_type=run_type)
 
         # Snapshot the exact prompt this session ran under: charters are
         # agent-owned and edited over time — the audit record of what
@@ -483,9 +547,9 @@ class Supervisor:
             transcript.with_suffix(".prompt.md").write_text(
                 prompt, encoding="utf-8")
         except OSError as e:
-            log(f"prompt snapshot failed: {e!r}")
+            slog.error("prompt_snapshot_failed", exc=e,
+                       path=str(transcript.with_suffix(".prompt.md")))
 
-        import os
         env = dict(os.environ)
         env["MIND_CONFIG"] = self.cfg_path
         env["MIND_SESSION_ID"] = session_uuid
@@ -506,9 +570,9 @@ class Supervisor:
             cmd += ["--mcp-config", str(mcp_cfg)]
         if self._cli_version() >= (2, 1, 211):
             cmd.append("--forward-subagent-text")
-        log(f"launch {run_type} model={alias}"
-            f"{f' effort={effort}' if effort else ''} "
-            f"turns<={max_turns} -> {transcript.name}")
+        slog.info("session_launch", model=alias, effort=effort,
+                  max_turns=max_turns, transcript=str(transcript),
+                  prompt_snapshot=str(transcript.with_suffix(".prompt.md")))
         self.ledger.start_session(session_uuid, run_type, alias,
                                   ctx.get("reason", ""), str(transcript))
         # Consume the wake request ONLY when this launch services it —
@@ -516,6 +580,7 @@ class Supervisor:
         # instant between the wake decision and here.
         if ctx.get("trigger"):
             (self.state / "wake_request.json").unlink(missing_ok=True)
+            slog.debug("wake_request_consumed")
 
         result: dict = {}
         results: list[dict] = []
@@ -556,11 +621,13 @@ class Supervisor:
                     if remaining <= 0:
                         proc.kill()
                         result.setdefault("subtype", "timeout")
-                        log("session timeout — killed")
+                        slog.warn("session_timeout_killed", timeout_s=timeout)
                         break
                     try:
                         line = q.get(timeout=min(remaining, 10))
                     except queue_mod.Empty:
+                        slog.debug("session_wait",
+                                   remaining_s=round(remaining))
                         continue
                     if line is None:
                         break
@@ -572,6 +639,14 @@ class Supervisor:
                             evt = json.loads(line)
                             if evt.get("type") == "result":
                                 results.append(evt)
+                                u = evt.get("usage") \
+                                    if isinstance(evt.get("usage"), dict) \
+                                    else {}
+                                slog.info("result_event",
+                                          subtype=evt.get("subtype"),
+                                          turns=evt.get("num_turns"),
+                                          input_tokens=u.get("input_tokens"),
+                                          output_tokens=u.get("output_tokens"))
                         except json.JSONDecodeError:
                             pass
                 exit_code = proc.wait(timeout=30)
@@ -582,6 +657,7 @@ class Supervisor:
                 result = dict(results[-1])
                 result.setdefault("subtype", "unknown")
                 if len(results) > 1:
+                    slog.debug("multi_result_merge", results=len(results))
                     result["num_turns"] = sum(
                         int(r.get("num_turns") or 0) for r in results)
                     result["total_cost_usd"] = max(
@@ -592,15 +668,16 @@ class Supervisor:
                             int((r.get("usage") or {}).get(k) or 0)
                             for r in results)
                     result["usage"] = merged
-        except FileNotFoundError:
-            log(f"FATAL: claude binary not found ({self.claude_bin})")
+        except FileNotFoundError as e:
+            slog.error("claude_binary_missing", exc=e,
+                       claude_bin=self.claude_bin)
             self.ledger.end_session(session_uuid, 127, 0, 0, 0, 0,
                                     "claude binary not found")
             self.claude_bin = self._find_claude()
             time.sleep(300)
             return
         except Exception as e:
-            log(f"launch error: {e!r}")
+            slog.error("session_launch_error", exc=e)
 
         self.finish(session_uuid, run_type, exit_code, result, alias, ctx)
 
@@ -617,8 +694,15 @@ class Supervisor:
             int(usage.get("output_tokens") or 0),
             int(result.get("num_turns") or 0), full_report[:2000])
         subtype = result.get("subtype", "unknown")
-        log(f"session done exit={exit_code} subtype={subtype} "
-            f"cost=${cost:.2f}")
+        dur = result.get("duration_ms")
+        slog = self.log.bind(session_id=session_uuid, run_type=run_type)
+        slog.info("session_finish", exit_code=exit_code, subtype=subtype,
+                  duration_s=(round(dur / 1000, 1)
+                              if isinstance(dur, (int, float)) else None),
+                  turns=int(result.get("num_turns") or 0),
+                  input_tokens=int(usage.get("input_tokens") or 0),
+                  output_tokens=int(usage.get("output_tokens") or 0),
+                  cost_usd=round(cost, 4), result_len=len(full_report))
 
         ok = exit_code == 0 and subtype in ("success", "unknown")
         if ok:
@@ -632,7 +716,7 @@ class Supervisor:
         # retry on the next tier, keyed off the launched alias.
         if alias == "fable" and self.retry_count == 0 \
                 and "refus" in json.dumps(result).lower():
-            log("possible refusal — retrying once on opus")
+            slog.info("refusal_retry", from_model=alias, to_model="opus")
             self.retry_count += 1
             self.launch(run_type, dict(
                 ctx, reason=ctx.get("reason", "") + " (retry)",
@@ -641,13 +725,16 @@ class Supervisor:
         self.retry_count += 1
         if self.retry_count <= 3:
             backoff = 60 * 2 ** (self.retry_count - 1)
-            log(f"session failed — retry {self.retry_count}/3 in {backoff}s")
+            slog.warn("session_retry", attempt=self.retry_count,
+                      max_attempts=3, backoff_s=backoff,
+                      exit_code=exit_code, subtype=subtype)
             time.sleep(backoff)
         else:
             self.retry_count = 0
             self.ledger.record_event("supervisor", "retries_exhausted",
                                      result)
-            log("3 consecutive failures — sleeping 1h")
+            slog.error("retries_exhausted", exit_code=exit_code,
+                       subtype=subtype, sleep_s=3600)
             time.sleep(3600)
 
     def _forgot_check(self, run_type: str, ctx: dict) -> None:
@@ -673,6 +760,8 @@ class Supervisor:
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             pass
         if nxt_ts > time.time():
+            self.log.debug("forgot_check_pass", run_type=run_type,
+                           next_wake_ts=nxt_ts)
             return
         nxt = datetime.now(timezone.utc) + timedelta(
             minutes=self.cfg["sessions"]["default_wake_minutes"])
@@ -689,7 +778,8 @@ class Supervisor:
                        "positions, then re-schedule properly."),
             "forgot_schedule": True})
         wake_f.write_text(json.dumps(merged, indent=2))
-        log(f"agent forgot wake.json — default applied (keys: {keys})")
+        self.log.info("forgot_schedule_default", run_type=run_type,
+                      keys_found=keys, next_wake=nxt.isoformat())
 
     def _prune_wake_request(self) -> None:
         """A stale pending wake request whose trigger the session just
@@ -709,7 +799,7 @@ class Supervisor:
             (self.state / "wake_request.json").unlink(missing_ok=True)
             self.ledger.record_event("supervisor", "wake_request_pruned",
                                      {"trigger_id": tid})
-            log("pruned stale wake_request after session")
+            self.log.info("wake_request_pruned", trigger_id=tid)
 
     def write_status(self) -> None:
         wake = self.read_json("wake.json") or {}
@@ -724,7 +814,16 @@ class Supervisor:
         }, indent=2))
 
     def run(self) -> None:
-        log(f"supervisor up: role={self.role} workspace={self.workspace}")
+        sess = self.cfg.get("sessions") or {}
+        self.log.info(
+            "startup", role=self.role, config=self.cfg_path,
+            workspace=str(self.workspace), claude_bin=self.claude_bin,
+            poll_seconds=POLL_SECONDS,
+            min_wake_interval_minutes=sess.get("min_wake_interval_minutes"),
+            default_wake_minutes=sess.get("default_wake_minutes"),
+            max_sleep_hours=sess.get("max_sleep_hours"),
+            session_timeout_minutes=sess.get("session_timeout_minutes"),
+            reflection_backstop_hours=sess.get("reflection_backstop_hours"))
         while True:
             try:
                 due = self.wake_due()
@@ -732,7 +831,7 @@ class Supervisor:
                     self.launch(*due)
                 self.write_status()
             except Exception as e:
-                log(f"loop error: {e!r}")
+                self.log.error("loop_error", exc=e)
                 self.ledger.record_event("supervisor", "error", repr(e))
                 time.sleep(30)
             time.sleep(POLL_SECONDS)
@@ -744,6 +843,7 @@ def main() -> None:
     args = ap.parse_args()
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
+    os.environ.setdefault("JSONLOG_DIR", str(cfg["paths"]["logs"]))
     Supervisor(cfg, args.config).run()
 
 

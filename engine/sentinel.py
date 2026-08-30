@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -53,20 +54,17 @@ import yaml
 ENGINE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE_DIR))
 
+from jsonlog import get_logger, prune_daily  # noqa: E402
 from ledger import Ledger, OPEN_ORDER_STATUSES as _OPEN_STATUSES  # noqa: E402
 from venue import Venue            # noqa: E402
 
 OCC_RE = re.compile(r"^[A-Z.]{1,6}\d{6}[CP]\d{8}$")
 
 
-def log(msg: str) -> None:
-    print(f"[{datetime.now(timezone.utc).isoformat(timespec='seconds')}] {msg}",
-          flush=True)
-
-
 class Sentinel:
     def __init__(self, cfg: dict):
         self.cfg = cfg
+        self.log = get_logger("sentinel")
         self.state = Path(cfg["paths"]["state"])
         self.state.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(cfg["paths"]["ledger"])
@@ -90,6 +88,8 @@ class Sentinel:
         self.warned_dead: set[str] = set()
         self.warned_windows: set[str] = set()
         self.warned_bad_triggers: set[str] = set()
+        self.warned_triggers_file = False
+        self.last_prune_day = ""
         # agent-authored autonomous scanners: isolated subprocesses on
         # their own cadence; shadow mode, wake budgets, and quarantine
         # live in scanners.py. Config-gated.
@@ -97,7 +97,7 @@ class Sentinel:
         if (cfg.get("scanners") or {}).get("enabled", True):
             from scanners import ScannerRunner
             self.scanners = ScannerRunner(cfg, self.ledger,
-                                          self.request_wake, log)
+                                          self.request_wake)
 
     # -- state files -----------------------------------------------------
 
@@ -107,8 +107,13 @@ class Sentinel:
             return []
         try:
             data = json.loads(f.read_text())
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            if not self.warned_triggers_file:
+                self.warned_triggers_file = True
+                self.log.error("triggers_file_unparseable", exc=e,
+                               path=str(f))
             return []
+        self.warned_triggers_file = False
         expire = data.get("expire")
         if expire:
             try:
@@ -117,7 +122,8 @@ class Sentinel:
                 if time.time() > exp_ts:
                     return []
             except ValueError:
-                pass
+                self.log.debug("triggers_expire_malformed",
+                               value=str(expire))
         return data.get("triggers", [])
 
     def request_wake(self, reason: str, context: dict,
@@ -129,6 +135,7 @@ class Sentinel:
         has the same choice rights as a slot the agent scheduled."""
         f = self.state / "wake_request.json"
         if f.exists():
+            self.log.debug("wake_request_debounced", reason=reason[:200])
             return
         body = {
             "requested_at": datetime.now(timezone.utc).isoformat(),
@@ -141,7 +148,8 @@ class Sentinel:
         f.write_text(json.dumps(body, indent=2, default=str))
         self.ledger.record_event("sentinel", "wake_requested",
                                  {"reason": reason, **context})
-        log(f"WAKE requested: {reason}")
+        self.log.info("wake_requested", reason=reason,
+                      protective=protective, wake_as=body.get("wake_as"))
 
     # -- data collection -------------------------------------------------
 
@@ -156,6 +164,7 @@ class Sentinel:
         if not symbols:
             return {}
         now = time.time()
+        started = time.monotonic()
         latest: dict[str, float] = {}
         stocks = [s for s in symbols if not OCC_RE.match(s)]
         options = [s for s in symbols if OCC_RE.match(s)]
@@ -167,7 +176,9 @@ class Sentinel:
                 quotes += [q | {"last": None}
                            for q in self.venue.option_quotes(options)]
         except Exception as e:
-            log(f"quote poll error: {e!r}")
+            self.log.error("quote_poll_failed", exc=e,
+                           stocks=len(stocks), options=len(options),
+                           dur_ms=round((time.monotonic() - started) * 1000))
             return latest
         for q in quotes:
             sym = q.get("symbol")
@@ -191,6 +202,9 @@ class Sentinel:
                 r.update({"hi": px, "lo": px, "day": day})
             r["hi"] = max(r["hi"], px)
             r["lo"] = min(r["lo"], px)
+        self.log.debug("quote_poll", requested=len(symbols),
+                       quoted=len(latest),
+                       dur_ms=round((time.monotonic() - started) * 1000))
         return latest
 
     def price_pct_move(self, symbol: str, window_min: float) -> float | None:
@@ -217,8 +231,8 @@ class Sentinel:
             self.no_data_polls[sym] = self.no_data_polls.get(sym, 0) + 1
             if self.no_data_polls[sym] >= 30 and sym not in self.warned_dead:
                 self.warned_dead.add(sym)
-                log(f"WARNING: trigger symbol {sym} returns no quote data "
-                    "— its tripwires are inert")
+                self.log.error("trigger_symbol_no_data", symbol=sym,
+                               polls=self.no_data_polls[sym])
                 self.ledger.record_event("sentinel",
                                          "trigger_symbol_no_data",
                                          {"symbol": sym})
@@ -244,7 +258,9 @@ class Sentinel:
             except Exception as e:
                 if tid not in self.warned_bad_triggers:
                     self.warned_bad_triggers.add(tid)
-                    log(f"WARNING: trigger {tid} unevaluable ({e!r})")
+                    self.log.error("trigger_unevaluable", exc=e,
+                                   trigger_id=tid, type=t.get("type"),
+                                   symbol=t.get("symbol"))
                     self.ledger.record_event(
                         "sentinel", "trigger_unevaluable",
                         {"id": tid, "error": repr(e)})
@@ -274,16 +290,25 @@ class Sentinel:
                     if cur is None or any(
                             cur.get(k) != t.get(k)
                             for k in ("type", "symbol", "value")):
-                        log(f"stale trigger skipped: {tid}")
+                        self.log.warn("trigger_stale_skipped",
+                                      trigger_id=tid)
                         self.ledger.record_event(
                             "sentinel", "trigger_stale_skipped", {"id": tid})
                         continue
                 self.fired[tid] = time.time()
+                self.log.info("trigger_fire", trigger_id=tid,
+                              type=t.get("type"), symbol=t.get("symbol"),
+                              threshold=self._tval(t), observed=detail,
+                              protective=bool(t.get("protective")))
                 self.request_wake(
                     f"TRIGGER {tid}: {t.get('note') or t.get('type')}",
                     {"trigger": t, "detail": detail},
                     protective=bool(t.get("protective")),
                     wake_as=t)
+            else:
+                self.log.debug("trigger_quiet", trigger_id=tid,
+                               type=t.get("type"), symbol=t.get("symbol"),
+                               threshold=self._tval(t), observed=detail)
 
     @staticmethod
     def _tval(t: dict):
@@ -344,7 +369,9 @@ class Sentinel:
         if typ == "order_fill" and t.get("order_id"):
             try:
                 o = self.venue.get_order(t["order_id"])
-            except Exception:
+            except Exception as e:
+                self.log.debug("order_fill_check_failed",
+                               order_id=t["order_id"], error=repr(e))
                 return False, {}
             if o["status"] == "filled":
                 return bool(t.get("wake", True)), {"order": {
@@ -363,8 +390,8 @@ class Sentinel:
             except (TypeError, ValueError):
                 if tid not in self.warned_windows:
                     self.warned_windows.add(tid)
-                    log(f"trigger {tid}: malformed {key}={raw!r} — "
-                        "ignored (fail-open)")
+                    self.log.warn("trigger_window_malformed",
+                                  trigger_id=tid, key=key, value=repr(raw))
                 continue
             if (key == "not_after" and time.time() > bound) or \
                     (key == "not_before" and time.time() < bound):
@@ -419,7 +446,10 @@ class Sentinel:
             "protection you want.",
             {"order_id": row["venue_order_id"], "trade_ids": tids},
             protective=True)
-        log(f"mleg fill adopted: {row['venue_order_id']} -> {len(tids)} legs")
+        self.log.info("fill_adopted", order_id=row["venue_order_id"],
+                      structure_id=structure_id, legs=len(tids),
+                      trade_ids=tids,
+                      filled_avg_price=o.get("filled_avg_price"))
 
     def adopt_fills(self) -> None:
         """Resting orders fill AFTER the session that placed them has
@@ -432,19 +462,24 @@ class Sentinel:
                 "SELECT * FROM orders WHERE venue_order_id IS NOT NULL "
                 f"AND status IN ({marks})", self.OPEN_ORDER_STATUSES)
         except Exception as e:
-            log(f"fill adoption query error: {e!r}")
+            self.log.error("fill_adoption_query_failed", exc=e)
             return
         for row in rows:
             try:
                 o = self.venue.get_order(row["venue_order_id"])
-            except Exception:
-                continue    # transient venue error; next poll retries
+            except Exception as e:
+                # transient venue error; next poll retries
+                self.log.debug("order_poll_failed",
+                               order_id=row["venue_order_id"],
+                               error=repr(e))
+                continue
             status = (o.get("status") or "").lower()
             if status in ("canceled", "cancelled", "expired", "rejected",
                           "done_for_day", "replaced"):
                 self.ledger.update_order(row["id"], status=status)
-                log(f"fill adoption: order {row['venue_order_id']} "
-                    f"-> {status}")
+                self.log.info("order_terminal",
+                              order_id=row["venue_order_id"],
+                              symbol=row["symbol"], status=status)
                 continue
             if row["side"] == "mleg":
                 if status == "filled":
@@ -490,8 +525,11 @@ class Sentinel:
                         {"order_id": row["venue_order_id"],
                          "symbol": row["symbol"], "filled_qty": fq,
                          "filled_avg_price": px, "order_qty": row["qty"]})
-                    log(f"partial fill adopted: {row['symbol']} "
-                        f"{row['side']} {fq}/{row['qty']} @ {px}")
+                    self.log.info("partial_fill_adopted",
+                                  order_id=row["venue_order_id"],
+                                  symbol=row["symbol"], side=row["side"],
+                                  filled_qty=fq, order_qty=row["qty"],
+                                  filled_avg_price=px, first=first)
                     if first:
                         self.request_wake(
                             f"PARTIAL FILL: {row['side']} {fq} of "
@@ -578,7 +616,9 @@ class Sentinel:
                 {"order_id": row["venue_order_id"],
                  "symbol": row["symbol"],
                  "filled_avg_price": px, "qty": fq})
-            log(f"fill adopted: {row['symbol']} {row['side']} {fq} @ {px}")
+            self.log.info("fill_adopted", order_id=row["venue_order_id"],
+                          symbol=row["symbol"], side=row["side"], qty=fq,
+                          filled_avg_price=px, trade_id=row["trade_id"])
 
     # -- housekeeping ----------------------------------------------------
 
@@ -590,12 +630,20 @@ class Sentinel:
                 now - self.last_balance > \
                 s.get("balance_snapshot_minutes", 60) * 60:
             self.last_balance = now
+            started = time.monotonic()
             try:
                 a = self.venue.account()
                 self.ledger.record_balance(a["equity"], a["cash"],
                                            a["positions_value"])
+                self.log.info("balance_snapshot", equity=a["equity"],
+                              cash=a["cash"],
+                              positions_value=a["positions_value"],
+                              dur_ms=round(
+                                  (time.monotonic() - started) * 1000))
             except Exception as e:
-                log(f"balance snapshot error: {e!r}")
+                self.log.error("balance_snapshot_failed", exc=e,
+                               dur_ms=round(
+                                   (time.monotonic() - started) * 1000))
 
         alarm_h = s.get("heartbeat_alarm_hours", 26)
         last = self.ledger.last_session_ts()
@@ -609,11 +657,18 @@ class Sentinel:
             except OSError:
                 pass
             quiet_h = int((now - last) / 3600)
-            log(f"heartbeat alarm: no session in {quiet_h}h"
-                + (" (halted — expected)" if halted else ""))
+            self.log.info("heartbeat_alarm", hours_since_session=quiet_h,
+                          halted=halted)
             self.ledger.record_event(
                 "sentinel", "heartbeat_alarm",
                 {"halted": halted, "hours_since_session": quiet_h})
+
+        day = time.strftime("%Y-%m-%d", time.gmtime(now))
+        if day != self.last_prune_day:
+            self.last_prune_day = day
+            removed = prune_daily(self.cfg["paths"]["logs"])
+            if removed:
+                self.log.info("daily_logs_pruned", removed=removed)
 
         (self.state / "sentinel_heartbeat").write_text(str(now))
 
@@ -621,7 +676,11 @@ class Sentinel:
 
     def run(self) -> None:
         poll = (self.cfg.get("sentinel") or {}).get("quote_poll_seconds", 15)
-        log(f"sentinel up: poll={poll}s")
+        self.log.info("sentinel_up", poll_seconds=poll,
+                      scanners_enabled=bool(self.scanners),
+                      state_dir=str(self.state),
+                      min_wake_interval_minutes=self.cfg["sessions"][
+                          "min_wake_interval_minutes"])
         while True:
             try:
                 triggers = self.load_triggers()
@@ -633,7 +692,7 @@ class Sentinel:
                     self.scanners.tick(time.time())
                 self.housekeeping()
             except Exception as e:
-                log(f"loop error: {e!r}")
+                self.log.error("loop_error", exc=e)
                 self.ledger.record_event("sentinel", "error", repr(e))
             time.sleep(poll)
 
@@ -644,6 +703,9 @@ def main() -> None:
     args = ap.parse_args()
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
+    # loggers resolve their sink directory from the environment at
+    # construction, so it must be set before any component is built
+    os.environ.setdefault("JSONLOG_DIR", str(cfg["paths"]["logs"]))
     Sentinel(cfg).run()
 
 

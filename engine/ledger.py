@@ -18,6 +18,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from jsonlog import get_logger
+
 # Venue order statuses that mean "still live at the venue — keep
 # watching". Shared vocabulary: the sentinel polls these for fill
 # adoption; the trade tool refuses to stack a second exit on a trade
@@ -241,6 +243,9 @@ class Ledger:
             meta = json.loads(trade_row.get("meta") or "{}")
             return float(meta.get("multiplier") or 1)
         except (ValueError, TypeError):
+            # falling back to 1 mis-scales option P&L, so say so
+            get_logger("ledger").warn("trade_meta_unparseable",
+                                      trade_id=trade_row.get("id"))
             return 1.0
 
     def update_trade(self, trade_id: int, **kw) -> None:

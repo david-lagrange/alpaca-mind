@@ -16,6 +16,10 @@ import json
 import sys
 from pathlib import Path
 
+from jsonlog import get_logger
+
+log = get_logger("render_transcript")
+
 
 def clip(text: str, n: int = 3000) -> str:
     text = str(text)
@@ -24,13 +28,20 @@ def clip(text: str, n: int = 3000) -> str:
 
 def render(path: Path) -> str:
     out = [f"# Session transcript — `{path.name}`\n"]
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        log.error("transcript_read_failed", exc=e, path=str(path))
+        raise
+    for line_no, line in enumerate(text.splitlines(), 1):
         line = line.strip()
         if not line.startswith("{"):
             continue
         try:
             evt = json.loads(line)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            log.error("transcript_line_parse_failed", exc=e,
+                      path=str(path), line_no=line_no)
             continue
         t = evt.get("type")
 

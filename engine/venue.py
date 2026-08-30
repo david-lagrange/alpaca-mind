@@ -21,10 +21,13 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Optional
+
+from jsonlog import get_logger
 
 DATA_BASE = "https://data.alpaca.markets"
 
@@ -44,15 +47,24 @@ class Venue:
         self.api_base = ("https://paper-api.alpaca.markets" if self.paper
                          else "https://api.alpaca.markets")
         self.options_feed = os.environ.get("ALPACA_OPTIONS_FEED", "indicative")
+        # Constructed here, not at import: the entry point sets JSONLOG_DIR
+        # from its config after imports resolve, and the logger reads the
+        # environment when it is created.
+        self.log = get_logger("venue")
 
     # -- HTTP -----------------------------------------------------------
 
     def _request(self, method: str, base: str, path: str,
                  params: dict | None = None, body: dict | None = None) -> dict:
         url = base + path
+        # The query string carries symbols and filters, never credentials,
+        # so it is safe in logs; headers are never logged.
+        logged_path = path
         if params:
-            url += "?" + urllib.parse.urlencode(
+            query = urllib.parse.urlencode(
                 {k: v for k, v in params.items() if v is not None})
+            url += "?" + query
+            logged_path = path + "?" + query
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(url, data=data, method=method, headers={
             "APCA-API-KEY-ID": self.key,
@@ -60,14 +72,30 @@ class Venue:
             "Accept": "application/json",
             "Content-Type": "application/json",
         })
+        started = time.monotonic()
         try:
             with urllib.request.urlopen(req, timeout=20) as resp:
                 text = resp.read().decode()
+                self.log.debug("venue_request", method=method,
+                               path=logged_path, status=resp.status,
+                               dur_ms=round((time.monotonic() - started) * 1000),
+                               resp_bytes=len(text))
                 return json.loads(text) if text.strip() else {}
         except urllib.error.HTTPError as e:
+            body_text = e.read().decode()
+            self.log.error("venue_request_failed", method=method,
+                           path=logged_path, status=e.code,
+                           dur_ms=round((time.monotonic() - started) * 1000),
+                           body=body_text[:300], exc=e)
             raise VenueError(
                 f"{method} {path} -> {e.code}: "
-                f"{e.read().decode()[:500]}") from e
+                f"{body_text[:500]}") from e
+        except Exception as e:
+            self.log.error("venue_request_failed", method=method,
+                           path=logged_path,
+                           dur_ms=round((time.monotonic() - started) * 1000),
+                           exc=e)
+            raise
 
     def _get(self, base, path, params=None):
         return self._request("GET", base, path, params)

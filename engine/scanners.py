@@ -63,6 +63,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from jsonlog import get_logger
+
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 
 # Keys a scanner may inherit; everything else is scrubbed. The venue
@@ -95,11 +97,11 @@ class ScannerRunner:
     """Owned by the sentinel; tick() is called every poll loop and NEVER
     raises or blocks (launch is Popen, reap is poll)."""
 
-    def __init__(self, cfg: dict, ledger, request_wake, log):
+    def __init__(self, cfg: dict, ledger, request_wake):
         self.cfg = cfg
         self.ledger = ledger
         self.request_wake = request_wake
-        self.log = log
+        self.log = get_logger("scanners")
         s = cfg.get("scanners") or {}
         self.workspace = Path(cfg["paths"]["workspace"])
         self.dir = self.workspace / "scanners"
@@ -149,8 +151,8 @@ class ScannerRunner:
                 self.ledger.record_event("sentinel",
                                          "scanner_manifest_error",
                                          {"error": repr(e)})
-                self.log(f"scanner manifest unreadable ({e!r}) — ALL "
-                         "scanners inert until fixed")
+                # unreadable manifest means EVERY scanner is inert
+                self.log.error("manifest_unreadable", exc=e, path=str(f))
             return []
         out = []
         for e in entries:
@@ -188,7 +190,7 @@ class ScannerRunner:
         try:
             self._tick(now)
         except Exception as e:  # the scanner layer must never hurt the loop
-            self.log(f"scanner layer error: {e!r}")
+            self.log.error("scanner_layer_error", exc=e)
 
     def _tick(self, now: float) -> None:
         day = _now_utc_day()
@@ -214,8 +216,8 @@ class ScannerRunner:
                 self.ledger.record_event("sentinel", "scanner_registered",
                                          {"id": m["id"],
                                           "shadow_runs": m["shadow_runs"]})
-                self.log(f"scanner {m['id']} (re)registered — shadow for "
-                         f"{m['shadow_runs']} runs")
+                self.log.info("scanner_registered", id=m["id"],
+                              shadow_runs=m["shadow_runs"])
                 self._save_health()
             if (not m["enabled"] or st["disabled"]
                     or m["id"] in self.running
@@ -264,7 +266,7 @@ class ScannerRunner:
         st["last_run_ts"] = now
         st["total_runs"] += 1
         self._save_health()
-        self.running[m["id"]] = {"proc": proc,
+        self.running[m["id"]] = {"proc": proc, "start": now,
                                  "deadline": now + m["timeout"],
                                  "m": m, "out": out_f, "err": err_f}
 
@@ -282,10 +284,12 @@ class ScannerRunner:
                     except OSError:
                         pass
                     st = self.health["scanners"].get(sid, {})
-                    self._failure(r["m"], st, now, "timeout", "")
+                    self._failure(r["m"], st, now, "timeout", "",
+                                  dur_ms=round((now - r["start"]) * 1000))
                     del self.running[sid]
                 continue
             del self.running[sid]
+            dur_ms = round((now - r["start"]) * 1000)
             st = self.health["scanners"].get(sid, {})
             if rc != 0:
                 tail = ""
@@ -293,7 +297,8 @@ class ScannerRunner:
                     tail = r["err"].read_text(errors="replace")[-300:]
                 except OSError:
                     pass
-                self._failure(r["m"], st, now, f"exit {rc}", tail)
+                self._failure(r["m"], st, now, f"exit {rc}", tail,
+                              dur_ms=dur_ms)
                 continue
             line = ""
             try:
@@ -306,10 +311,15 @@ class ScannerRunner:
             except (OSError, json.JSONDecodeError, AssertionError,
                     ValueError):
                 self._failure(r["m"], st, now,
-                              "no JSON result line", line[:200])
+                              "no JSON result line", line[:200],
+                              dur_ms=dur_ms)
                 continue
             st["consecutive_failures"] = 0
             st["last_status"] = "ok"
+            self.log.debug("scanner_run", id=sid, status="ok",
+                           dur_ms=dur_ms, wake=bool(result.get("wake")),
+                           noop=bool(result.get("noop")),
+                           shadow_left=st.get("shadow_left", 0))
             in_shadow = st.get("shadow_left", 0) > 0
             # A structurally-unable-to-fire run ({"noop": true}) counts
             # as a run but does not consume shadow validation — exiting
@@ -319,7 +329,7 @@ class ScannerRunner:
             if in_shadow and (result.get("wake") or not result.get("noop")):
                 st["shadow_left"] -= 1
                 if st["shadow_left"] == 0:
-                    self.log(f"scanner {sid} exits shadow mode — LIVE")
+                    self.log.info("scanner_live", id=sid)
             if result.get("wake"):
                 reason = str(result.get("reason") or "scanner fired")[:400]
                 if in_shadow:
@@ -327,12 +337,22 @@ class ScannerRunner:
                     self.ledger.record_event(
                         "sentinel", "scanner_shadow_fire",
                         {"id": sid, "reason": reason})
+                    self.log.info("scanner_shadow_fire", id=sid,
+                                  reason=reason,
+                                  shadow_left=st["shadow_left"])
                 elif (st["wakes_today"] >= r["m"]["max_wakes"]
                       or self.health["global_wakes_today"]
                       >= self.global_budget):
                     self.ledger.record_event(
                         "sentinel", "scanner_budget_exhausted",
                         {"id": sid, "reason": reason})
+                    self.log.warn("scanner_budget_exhausted", id=sid,
+                                  reason=reason,
+                                  wakes_today=st["wakes_today"],
+                                  max_wakes=r["m"]["max_wakes"],
+                                  global_wakes_today=self.health[
+                                      "global_wakes_today"],
+                                  global_budget=self.global_budget)
                 else:
                     st["wakes_today"] += 1
                     st["total_fires"] += 1
@@ -346,6 +366,10 @@ class ScannerRunner:
                         k: (result.get(k) or r["m"].get(k))
                         for k in ("run_type", "model", "effort", "charter")
                         if (result.get(k) or r["m"].get(k))}
+                    self.log.info("scanner_fire", id=sid, reason=reason,
+                                  protective=bool(result.get("protective")),
+                                  wake_as=wake_as or None,
+                                  wakes_today=st["wakes_today"])
                     self.request_wake(
                         f"SCANNER {sid}: {reason}",
                         {"scanner": sid,
@@ -355,20 +379,24 @@ class ScannerRunner:
             self._save_health()
 
     def _failure(self, m: dict, st: dict, now: float,
-                 what: str, detail: str) -> None:
+                 what: str, detail: str, dur_ms: int | None = None) -> None:
         st["consecutive_failures"] = st.get("consecutive_failures", 0) + 1
         st["last_status"] = what
         n = st["consecutive_failures"]
         self.ledger.record_event("sentinel", "scanner_error",
                                  {"id": m["id"], "error": what,
                                   "detail": detail, "consecutive": n})
-        self.log(f"scanner {m['id']} failed ({what}) — {n} consecutive")
+        self.log.error("scanner_failed", id=m["id"], status=what,
+                       consecutive=n, dur_ms=dur_ms,
+                       detail=detail[:300] or None)
         if n >= 3 and not st.get("disabled"):
             # Fail LOUD to the author: disable and wake the agent ONCE
             # to fix its own code.
             st["disabled"] = True
             self.ledger.record_event("sentinel", "scanner_quarantined",
                                      {"id": m["id"], "error": what})
+            self.log.error("scanner_quarantined", id=m["id"], status=what,
+                           detail=detail[:300] or None)
             self.request_wake(
                 f"INERT SCANNER {m['id']}: quarantined after 3 consecutive "
                 f"failures ({what}). It has NOT been sensing since it "

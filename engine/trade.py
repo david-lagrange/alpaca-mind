@@ -56,8 +56,13 @@ import yaml
 ENGINE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE_DIR))
 
+from jsonlog import get_logger                   # noqa: E402
 from ledger import Ledger, OPEN_ORDER_STATUSES  # noqa: E402
 from venue import Venue                          # noqa: E402
+
+# Rebound in main() once config supplies JSONLOG_DIR; until then records
+# reach stderr only.
+log = get_logger("trade")
 
 OCC_RE = re.compile(r"^[A-Z.]{1,6}\d{6}[CP]\d{8}$")
 
@@ -146,6 +151,7 @@ def cmd_open(args, cfg, ledger, venue) -> None:
 
     violations = check_bounds(cfg, ledger)
     if violations:
+        log.warn("order_blocked", symbol=args.symbol, violations=violations)
         ledger.record_event("trade_tool", "order_blocked",
                             {"symbol": args.symbol,
                              "violations": violations})
@@ -163,6 +169,10 @@ def cmd_open(args, cfg, ledger, venue) -> None:
         qty=qty, notional=notional, limit_price=args.limit_price,
         stop_price=args.stop_price, status="pending",
         session_id=session_id, thesis=args.thesis)
+    log.info("order_intent_recorded", order_id=order_id, symbol=args.symbol,
+             side=order_side, order_type=args.type, qty=qty,
+             notional=notional, limit_price=args.limit_price,
+             stop_price=args.stop_price)
     try:
         result = venue.place_order(
             args.symbol, order_side, args.type,
@@ -171,8 +181,16 @@ def cmd_open(args, cfg, ledger, venue) -> None:
             limit_price=args.limit_price, stop_price=args.stop_price,
             time_in_force=args.tif)
     except Exception as e:
+        log.error("order_place_failed", exc=e, order_id=order_id,
+                  symbol=args.symbol, side=order_side, order_type=args.type)
         ledger.update_order(order_id, status="error")
         fail(f"venue rejected/errored before fill: {type(e).__name__}: {e}")
+
+    log.info("order_placed", order_id=order_id,
+             venue_order_id=result["venue_order_id"], symbol=args.symbol,
+             side=order_side, order_type=args.type, qty=qty,
+             limit_price=args.limit_price, status=result["status"],
+             filled_qty=result["filled_qty"])
 
     trade_id = None
     try:
@@ -202,6 +220,13 @@ def cmd_open(args, cfg, ledger, venue) -> None:
                                 "side": args.side, "thesis": args.thesis,
                                 "error": repr(e), "venue_result": result},
                                default=str) + "\n")
+        log.error("unrecorded_fill", exc=e, order_id=order_id,
+                  venue_order_id=result.get("venue_order_id"),
+                  symbol=args.symbol, side=args.side,
+                  status=result.get("status"),
+                  filled_qty=result.get("filled_qty"),
+                  filled_avg_price=result.get("filled_avg_price"),
+                  dump=str(dump))
         ledger.record_event("trade_tool", "unrecorded_fill",
                             {"symbol": args.symbol, "dump": str(dump)})
         fail("ORDER PLACED AT VENUE but ledger write failed — venue result "
@@ -251,6 +276,7 @@ def cmd_spread(args, cfg, ledger, venue) -> None:
     legs = _parse_legs(args.legs)
     violations = check_bounds(cfg, ledger)
     if violations:
+        log.warn("order_blocked", legs=args.legs, violations=violations)
         ledger.record_event("trade_tool", "order_blocked",
                             {"legs": args.legs, "violations": violations})
         fail("order blocked", violations=violations)
@@ -260,15 +286,24 @@ def cmd_spread(args, cfg, ledger, venue) -> None:
         symbol=legs[0]["symbol"], side="mleg", order_type=args.type,
         qty=args.qty, limit_price=args.limit_price, status="pending",
         session_id=session_id, legs=legs, thesis=args.thesis)
+    log.info("order_intent_recorded", order_id=order_id, side="mleg",
+             legs=args.legs, leg_count=len(legs), qty=args.qty,
+             order_type=args.type, limit_price=args.limit_price)
     try:
         result = venue.place_mleg_order(
             legs, qty=args.qty, order_type=args.type,
             limit_price=args.limit_price)
     except Exception as e:
+        log.error("order_place_failed", exc=e, order_id=order_id,
+                  side="mleg", legs=args.legs, qty=args.qty)
         ledger.update_order(order_id, status="error")
         fail(f"venue rejected the spread: {type(e).__name__}: {e}")
 
     structure_id = result["venue_order_id"]
+    log.info("order_placed", order_id=order_id, venue_order_id=structure_id,
+             structure_id=structure_id, side="mleg", legs=args.legs,
+             leg_count=len(legs), qty=args.qty,
+             limit_price=args.limit_price, status=result["status"])
     ledger.update_order(order_id, venue_order_id=structure_id,
                         status=result["status"],
                         structure_id=structure_id,
@@ -359,12 +394,19 @@ def cmd_close(args, cfg, ledger, venue) -> None:
             status="pending", session_id=session_id, trade_id=t["id"],
             thesis=f"PROTECTIVE EXIT (resting {args.type}) for trade "
                    f"{t['id']}: {args.reason or 'protective exit'}")
+        log.info("order_intent_recorded", order_id=order_id,
+                 trade_id=t["id"], symbol=t["symbol"], side=close_side,
+                 order_type=args.type, qty=t["qty"],
+                 limit_price=args.limit_price, stop_price=args.stop_price)
         try:
             result = venue.place_order(
                 t["symbol"], close_side, args.type, qty=t["qty"],
                 limit_price=args.limit_price, stop_price=args.stop_price,
                 time_in_force="gtc")
         except Exception as e:
+            log.error("order_place_failed", exc=e, order_id=order_id,
+                      trade_id=t["id"], symbol=t["symbol"], side=close_side,
+                      order_type=args.type)
             ledger.update_order(order_id, status="error")
             fail(f"venue rejected the protective exit: "
                  f"{type(e).__name__}: {e}",
@@ -374,6 +416,11 @@ def cmd_close(args, cfg, ledger, venue) -> None:
         ledger.update_order(order_id,
                             venue_order_id=result["venue_order_id"],
                             status=result["status"])
+        log.info("order_placed", order_id=order_id,
+                 venue_order_id=result["venue_order_id"], trade_id=t["id"],
+                 symbol=t["symbol"], side=close_side, order_type=args.type,
+                 qty=t["qty"], limit_price=args.limit_price,
+                 stop_price=args.stop_price, status=result["status"])
         out({"ok": result["status"] not in ("rejected",),
              "resting_exit": result | {"raw": "(stored in ledger)"},
              "trade_id": t["id"]})
@@ -391,13 +438,20 @@ def cmd_close(args, cfg, ledger, venue) -> None:
     # (two ledger lots on one symbol must survive each other's exits).
     result = venue.place_order(t["symbol"], close_side, "market",
                                qty=t["qty"])
+    log.info("order_placed", venue_order_id=result["venue_order_id"],
+             trade_id=t["id"], symbol=t["symbol"], side=close_side,
+             order_type="market", qty=t["qty"], status=result["status"],
+             filled_qty=result["filled_qty"])
     final = dict(result)
     if result["venue_order_id"] and not result.get("filled_avg_price"):
         for _ in range(3):
             time.sleep(1)
             try:
                 o = venue.get_order(result["venue_order_id"])
-            except Exception:
+            except Exception as e:
+                log.warn("fill_poll_failed",
+                         venue_order_id=result["venue_order_id"],
+                         trade_id=t["id"], error=repr(e))
                 break
             if o.get("filled_avg_price"):
                 final.update({k: o.get(k) for k in
@@ -429,12 +483,17 @@ def cmd_close(args, cfg, ledger, venue) -> None:
                 + f" [PARTIAL: {fq:g} of {t['qty']:g} filled; remainder "
                   "stays open]",
                 session_id=session_id)
+            log.info("split_close", trade_id=t["id"], symbol=t["symbol"],
+                     filled_qty=fq, submitted_qty=t["qty"],
+                     exit_price=exit_px)
         else:
             summary = ledger.close_trade(
                 t["id"], exit_price=exit_px,
                 fees_add=final.get("fees") or 0,
                 exit_reason=args.reason or "unspecified",
                 session_id=session_id)
+            log.info("trade_closed", trade_id=t["id"], symbol=t["symbol"],
+                     qty=t["qty"], exit_price=exit_px)
         out({"ok": True, "closed": summary,
              "order": final | {"raw": "(stored in ledger)"}})
     else:
@@ -442,6 +501,9 @@ def cmd_close(args, cfg, ledger, venue) -> None:
         # recorded at the quote price is wrong forever once the real
         # fill differs. The sentinel adopts the actual fill and closes
         # the trade at the real price, carrying this reason.
+        log.info("close_submitted", trade_id=t["id"], symbol=t["symbol"],
+                 venue_order_id=final["venue_order_id"],
+                 status=final["status"])
         out({"ok": True, "trade_id": t["id"],
              "closing": final | {"raw": "(stored in ledger)"},
              "note": "close order submitted; fill not confirmed yet. The "
@@ -496,6 +558,14 @@ def cmd_reconcile(args, cfg, ledger, venue) -> None:
         "SELECT id, symbol, side, status FROM orders "
         "WHERE status IN ('pending','error') ORDER BY ts DESC LIMIT 10")
     diverged_rows = [r for r in report if r["diverged"]]
+    for r in diverged_rows:
+        log.warn("reconcile_divergence", symbol=r["symbol"],
+                 venue_qty=r["venue_qty"], ledger_qty=r["ledger_qty"],
+                 healed=r.get("healed"))
+    log.info("reconcile", heal=bool(args.heal),
+             divergence_count=len(diverged_rows),
+             clean_count=len(report) - len(diverged_rows),
+             healed_count=len(healed), stuck_orders=len(pending))
     out({"ok": True, "divergence_count": len(diverged_rows),
          "diverged": diverged_rows,
          "clean": [r["symbol"] for r in report if not r["diverged"]],
@@ -605,8 +675,29 @@ def main() -> None:
 
     args = p.parse_args()
     cfg = load_config()
+
+    global log
+    logs_dir = (cfg.get("paths") or {}).get("logs")
+    if logs_dir:
+        os.environ.setdefault("JSONLOG_DIR", str(logs_dir))
+    log = get_logger("trade")
+    if os.environ.get("MIND_SESSION_ID"):
+        log = log.bind(session_id=os.environ["MIND_SESSION_ID"])
+
     ledger = Ledger(cfg["paths"]["ledger"])
     venue = Venue()
+
+    legs_spec = getattr(args, "legs", None)
+    log.info("command", cmd=args.cmd,
+             symbol=getattr(args, "symbol", None),
+             symbols=getattr(args, "symbols", None),
+             underlying=getattr(args, "underlying", None),
+             side=getattr(args, "side", None),
+             qty=getattr(args, "qty", None),
+             notional=getattr(args, "notional", None),
+             trade_id=getattr(args, "trade_id", None),
+             order_id=getattr(args, "order_id", None),
+             leg_count=len(legs_spec.split(",")) if legs_spec else None)
 
     try:
         if args.cmd == "account":
@@ -653,6 +744,8 @@ def main() -> None:
                 (args.order_id,))
             if rows:
                 ledger.update_order(rows[0]["id"], status="canceled")
+            log.info("cancel_requested", venue_order_id=args.order_id,
+                     ledger_order_id=rows[0]["id"] if rows else None)
             out(res)
         elif args.cmd == "reconcile":
             cmd_reconcile(args, cfg, ledger, venue)
@@ -700,6 +793,7 @@ def main() -> None:
     except SystemExit:
         raise
     except Exception as e:
+        log.error("command_failed", exc=e, cmd=args.cmd)
         ledger.record_event("trade_tool", "error",
                             {"cmd": args.cmd, "error": repr(e)})
         fail(f"{type(e).__name__}: {e}")

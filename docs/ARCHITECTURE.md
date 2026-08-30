@@ -108,7 +108,11 @@ A second, cheaper agent whose whole territory is `/srv/ui/app`. The
 engine wakes it after the trader's FIRST completed session (so it
 builds from real transcripts) for First Construction, then after every
 few trader sessions, and immediately when the owner presses "run now"
-in the inbox. Each pass it reads the trader's journals (the trader
+in the inbox. The trader can also ring it directly — `trade notify`,
+one command, callable from any session when something worth showing
+happened — and the manager wakes as soon as that session closes; the
+session-count cadence and max-gap are only the floor for a trader
+that never rings. Each pass it reads the trader's journals (the trader
 narrating its own life), transcripts, and ledger — then grows the app:
 pages, components, its own SQLite tables, whatever makes the trader's
 inner life visible. Its charters bind it to a hard quality law: builds

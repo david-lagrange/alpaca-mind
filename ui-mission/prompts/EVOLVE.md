@@ -18,12 +18,15 @@ how many, or that the owner asked for you). Your duties, any route:
    quietly, a slow endpoint. Fix what's broken BEFORE building
    anything new — a window with a cracked pane doesn't need another
    room — and note in your report what the logs showed.
-3. **Read what the trader did** since your last pass: its `journal/`
-   entries first (the trader narrating its own life — a primary
-   source), then the new transcripts in `/srv/mind/logs/sessions/`
-   (fan subagents across them when there are many), new ledger rows,
-   new strategy artifacts (all read-only). Ask: what happened that the
-   current interface does NOT yet show well?
+3. **Read what the trader did** since your last pass — your watermark
+   (`kv.integrated_through`) says exactly where "since" starts, and
+   your wake reason may carry the trader's own notify notes about why
+   you were rung. Its `journal/` entries first (the trader narrating
+   its own life — a primary source), then the new transcripts in
+   `/srv/mind/logs/sessions/` (fan subagents across them when there
+   are many), new ledger rows and events, new strategy artifacts (all
+   read-only). Ask: what happened that the current interface does NOT
+   yet show well?
 4. **Grow the interface** where the story outgrew it: deepen the
    standing sections (owner-defaults.md — new lessons landed, new
    problems overcome, knowledge visibly compounding, each surfaced
@@ -37,7 +40,8 @@ how many, or that the owner asked for you). Your duties, any route:
    inside the trader's day — and honest: losses, mistakes, and
    lessons rendered as plainly as wins.
 5. **Keep it current**: update `kv.next_run_at` so the inbox always
-   shows when you'll look next.
+   shows when you'll look next, and advance `kv.integrated_through`
+   to what you just integrated.
 
 Close out per your quality law (CLAUDE.md): build passes, every touched
 route verified, mobile-first, honest data states, fresh-eyes pass —

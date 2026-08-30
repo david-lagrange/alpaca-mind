@@ -36,5 +36,8 @@ construct:
   session_timeout_minutes: 180
 
 ui:
+  # Cadence floor only — the trader's own bell (`trade notify` events)
+  # usually wakes the manager sooner, as soon as the ringing session
+  # closes. These fire for a trader that never rings.
   trader_sessions_per_run: 4   # evolve after every N trader sessions...
   max_gap_hours: 12            # ...or after this long, if anything new ran

@@ -1,0 +1,32 @@
+# secrets and local env — never committed
+.env
+*.env
+.env.*
+
+# databases and runtime state
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# logs and session artifacts
+logs/
+*.log
+*.jsonl
+
+# node / next
+node_modules/
+.next/
+
+# python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# editor droppings
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

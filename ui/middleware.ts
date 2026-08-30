@@ -35,13 +35,25 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function unauthorized(): NextResponse {
+function unauthorized(challenge = true): NextResponse {
+  // The WWW-Authenticate header is what makes a browser throw its
+  // sign-in dialog. On a public showcase page, a background fetch to a
+  // gated API must fail QUIETLY (plain 401, component shows its
+  // owner-only state) — otherwise one widget interrogates every
+  // visitor with a popup over a page that is meant to be open.
   return new NextResponse("Authentication required.", {
     status: 401,
-    headers: {
-      "WWW-Authenticate": `Basic realm="${REALM}", charset="UTF-8"`,
-    },
+    headers: challenge
+      ? { "WWW-Authenticate": `Basic realm="${REALM}", charset="UTF-8"` }
+      : {},
   });
+}
+
+/** A top-level page navigation, as opposed to a fetch/asset request. */
+function isDocumentRequest(request: NextRequest): boolean {
+  const dest = request.headers.get("sec-fetch-dest");
+  if (dest) return dest === "document";
+  return (request.headers.get("accept") ?? "").includes("text/html");
 }
 
 function notConfigured(): NextResponse {
@@ -96,7 +108,8 @@ export function middleware(request: NextRequest): NextResponse {
     return notConfigured();
   }
 
-  if (process.env.UI_PUBLIC === "true") {
+  const publicMode = process.env.UI_PUBLIC === "true";
+  if (publicMode) {
     const method = request.method.toUpperCase();
     const safeMethod =
       method === "GET" || method === "HEAD" || method === "OPTIONS";
@@ -110,9 +123,13 @@ export function middleware(request: NextRequest): NextResponse {
     }
   }
 
+  // In public mode, only a deliberate page navigation earns the
+  // browser's sign-in dialog; everything else fails quietly.
+  const challenge = !publicMode || isDocumentRequest(request);
+
   const header = request.headers.get("authorization") ?? "";
   if (!header.startsWith("Basic ")) {
-    return unauthorized();
+    return unauthorized(challenge);
   }
 
   let user = "";
@@ -120,18 +137,18 @@ export function middleware(request: NextRequest): NextResponse {
   try {
     const decoded = atob(header.slice(6).trim());
     const sep = decoded.indexOf(":");
-    if (sep === -1) return unauthorized();
+    if (sep === -1) return unauthorized(challenge);
     user = decoded.slice(0, sep);
     pass = decoded.slice(sep + 1);
   } catch {
-    return unauthorized();
+    return unauthorized(challenge);
   }
 
   // Evaluate both comparisons unconditionally to keep timing uniform.
   const userOk = safeEqual(user, USERNAME);
   const passOk = safeEqual(pass, password);
   if (!(userOk && passOk)) {
-    return unauthorized();
+    return unauthorized(challenge);
   }
 
   return NextResponse.next();

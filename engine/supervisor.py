@@ -85,6 +85,13 @@ class Supervisor:
         self.state.mkdir(parents=True, exist_ok=True)
         self.logs.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(cfg["paths"]["ledger"])
+        # A starting supervisor owns nothing that is running, so any
+        # open session row is an orphan from a kill that outran
+        # finalization — and an orphan that looks alive can hold back
+        # wake decisions built on "is a session open".
+        orphans = self.ledger.close_orphan_sessions()
+        if orphans:
+            self.log.warn("orphan_sessions_closed", count=orphans)
         # The UI role paces itself off the trader's activity: it reads
         # the trader's ledger (read-only) to count completed sessions.
         tl = cfg["paths"].get("trader_ledger")

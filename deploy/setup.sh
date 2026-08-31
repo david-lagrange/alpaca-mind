@@ -37,9 +37,11 @@ set -euo pipefail
 # them on first boot, a hand re-run usually doesn't — and a re-run that
 # silently falls back to defaults points at the wrong SSM prefix.
 # Explicit environment still wins over the remembered values.
+SETUP_RERUN=0
 if [ -f /etc/default/alpaca-mind-setup ]; then
   # shellcheck disable=SC1091
   . /etc/default/alpaca-mind-setup
+  SETUP_RERUN=1
 fi
 
 SRC_DIR="${SRC_DIR:-/opt/alpaca-mind-src}"
@@ -443,9 +445,13 @@ systemctl enable --now ui-web.service
 systemctl enable --now ui-restart.path
 systemctl enable --now mind-backup.timer
 
-# Re-runs may have changed engine code, config, or .env contents; restart the
-# daemons so they pick the changes up.
-systemctl restart mind-supervisor.service mind-sentinel.service ui-supervisor.service ui-web.service
+# Re-runs may have changed engine code, config, or .env contents; restart
+# the daemons so they pick the changes up. On FIRST boot the enable above
+# just started everything — an immediate restart here would kill a freshly
+# launched genesis session and orphan its ledger row.
+if [ "$SETUP_RERUN" = 1 ]; then
+  systemctl restart mind-supervisor.service mind-sentinel.service ui-supervisor.service ui-web.service
+fi
 
 # ----------------------------------------------------------------------------
 # 12. Public port → app port redirect. The Next.js server binds an

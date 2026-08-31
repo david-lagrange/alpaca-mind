@@ -354,6 +354,16 @@ class Ledger:
             f"AND ts_end > ? {excl}", tuple(params))
         return rows[0]["c"] if rows else 0
 
+    def close_orphan_sessions(self) -> int:
+        """Finalize sessions left open by a kill that outran
+        end_session. A supervisor calls this at startup, when nothing
+        it owns can be running. Returns how many rows were closed."""
+        cur = self._conn.execute(
+            "UPDATE sessions SET ts_end = ts_start, exit_code = -1 "
+            "WHERE ts_end IS NULL")
+        self._conn.commit()
+        return cur.rowcount
+
     def has_open_session(self, since: float) -> bool:
         """A session started after `since` and not yet finalized. The
         time bound matters: a crash can orphan a NULL ts_end row, and a

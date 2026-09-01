@@ -357,6 +357,47 @@ class Supervisor:
                 continue
         return None
 
+    def _next_slot_ts(self) -> float | None:
+        """When would the recurring schedule wake the agent anyway?
+        Returns the earliest slot firing time: a past-due-unconsumed
+        slot counts as NOW (it launches on the next poll), otherwise
+        the soonest future occurrence within the coming week. Malformed
+        slots are skipped, mirroring agent_slot_due; no events are
+        emitted — this is a read, not a wake decision."""
+        sched = self.read_json("schedule.json")
+        if not (isinstance(sched, dict)
+                and isinstance(sched.get("slots"), list)):
+            return None
+        best: float | None = None
+        for s in sched["slots"]:
+            try:
+                rt = self._sanitize_run_type(s.get("run_type"))
+                if not rt or rt == "awakening":
+                    continue
+                tz = ZoneInfo(str(s.get("timezone") or "UTC"))
+                now = datetime.now(tz)
+                days = [str(d).lower()[:3] for d in (s.get("days") or [])]
+                hh, mm = map(int, str(s["at_local_time"]).split(":"))
+                for ahead in range(8):
+                    cand = (now + timedelta(days=ahead)).replace(
+                        hour=hh, minute=mm, second=0, microsecond=0)
+                    if days and cand.strftime("%a").lower() not in days:
+                        continue
+                    if cand <= now:
+                        # Today's slot already passed: unconsumed means
+                        # it fires on the next poll — due now.
+                        if self.ledger.last_finished_ts(rt) \
+                                < cand.timestamp():
+                            return time.time()
+                        continue
+                    ts = cand.timestamp()
+                    if best is None or ts < best:
+                        best = ts
+                    break
+            except Exception:
+                continue
+        return best
+
     def reflection_backstop_due(self) -> tuple[str, dict] | None:
         """The aliveness floor — NOT a schedule. Fires only when no
         non-trading-class session has COMPLETED in a long while, meaning
@@ -461,7 +502,13 @@ class Supervisor:
                             d = None
                     m = d.get("message") if isinstance(d, dict) else None
                     if m:
-                        msgs.append(str(m)[:200])
+                        # Teaser only — the full message lives in the
+                        # ledger event; cut at a word so the reason
+                        # never ends mid-token.
+                        s = str(m)
+                        if len(s) > 200:
+                            s = s[:200].rsplit(" ", 1)[0] + "…"
+                        msgs.append(s)
                 self.log.info("notify_wake", pending=len(notifies),
                               messages=msgs)
                 return ("evolve", {"reason": (
@@ -786,9 +833,22 @@ class Supervisor:
         every field the agent wrote is preserved; the default names what
         was missing. Sessions launched from recurring slots (and
         reflection/research classes) don't own the one-shot schedule and
-        are exempt."""
+        are exempt — and so is any session whose recurring schedule
+        already wakes the agent within the default window: the floor
+        guarantees the mind cannot sleep forever, never that every file
+        is filled in."""
         if ctx.get("from_slot") or ctx.get("backstop") \
                 or run_type in ("reflection", "research", "awakening"):
+            return
+        # The default exists so a mind can never sleep forever — not to
+        # duplicate a schedule that is about to fire anyway. A recurring
+        # slot due now or inside the default window IS the next wake;
+        # injecting another would manufacture a spurious session.
+        window_s = self.cfg["sessions"]["default_wake_minutes"] * 60
+        nxt_slot = self._next_slot_ts()
+        if nxt_slot is not None and nxt_slot <= time.time() + window_s:
+            self.log.debug("forgot_check_slot_covered",
+                           run_type=run_type, next_slot_ts=nxt_slot)
             return
         wake_f = self.state / "wake.json"
         nxt_ts = 0.0

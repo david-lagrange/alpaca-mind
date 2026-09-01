@@ -30,7 +30,7 @@ fully before explaining it to your human or changing anything.*
 │    /srv/ui/workspace     its identity + charters                   │
 │    /srv/ui/app           the Next.js app it builds and evolves     │
 │      (inbox + kv in its own SQLite; reads the trader's ledger,     │
-│       journals, and transcripts READ-ONLY)                         │
+│       entire workspace, and transcripts READ-ONLY)                 │
 │                                                                    │
 │  systemd: mind-supervisor, mind-sentinel, ui-supervisor, ui-web    │
 │    (+ ui-restart.path and the nightly mind-backup.timer → S3)      │
@@ -140,10 +140,11 @@ addressed-note trail, and a "run now" button when something's waiting.
 ## Security boundaries (see docs/SECURITY.md for the full model)
 
 - Engine root-owned; agents execute it, never write it.
-- The trader cannot touch `/srv/ui`; the UI manager cannot touch
-  `/srv/mind` (filesystem permissions + settings deny rules), reads
-  the ledger/transcripts through read-only group access, and has no
-  order path — its blast radius is "the interface changed".
+- The trader cannot touch `/srv/ui`; the UI manager cannot WRITE
+  anything under `/srv/mind` (filesystem permissions + settings deny
+  rules), reads the ledger, transcripts, and the trader's whole
+  workspace through read-only group access, and has no order path —
+  its blast radius is "the interface changed".
 - Secrets live in SSM and per-user `.env` files (mode 600); agent
   settings deny reading them; the whole web app sits behind Basic
   Auth.

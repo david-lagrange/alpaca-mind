@@ -17,7 +17,7 @@ enforces.
 | Actor | Can | Cannot |
 |---|---|---|
 | Trader (`mind`) | trade via its CLI + MCP tools; write its own workspace/lab; read its own everything | write the engine; touch `/srv/ui`; read `.env` files (settings-denied) or SSM; sudo |
-| UI manager (`ui`) | write `/srv/ui/app` + its workspace; READ the trader's ledger, journals, transcripts (group read-only) | write anything of the trader's; place any order (no trade CLI path, no venue write creds needed for its job); sudo |
+| UI manager (`ui`) | write `/srv/ui/app` + its workspace; READ the trader's entire workspace (journals, memory, doctrine, strategies, state), ledger, and transcripts (group read-only — the window sees everything, verbatim) | write anything of the trader's; place any order (no trade CLI path, no venue write creds needed for its job); sudo |
 | Web app | serve read-views + the inbox | reach anything but its own SQLite, the read-only ledger, the daily log streams (read-only), and account READ endpoints |
 | Engine daemons | root-owned code, run as the agent users | — |
 

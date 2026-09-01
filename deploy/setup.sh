@@ -340,17 +340,24 @@ EOF
 unset ALPACA_API_KEY ALPACA_SECRET_KEY CLAUDE_CODE_OAUTH_TOKEN UI_PASSWORD
 
 # ----------------------------------------------------------------------------
-# 9. Read-only cross-access. The UI reads the trader's ledger and session
-#    logs but must never write them. Mechanism:
+# 9. Read-only cross-access. The UI manager is the owner's window into the
+#    whole mind: it reads the trader's ledger, session logs, and the entire
+#    workspace — journals, memory, doctrine, strategies, state — but must
+#    never write any of it. Mechanism:
 #      - group `ledger-readers` (ui is a member) may traverse /srv/mind
 #      - ledger.db is group-readable (640, group ledger-readers)
 #      - a default ACL on /srv/mind keeps files the trader creates there
 #        (ledger sidecar files like -wal/-shm included) group-readable
 #      - /srv/mind/logs is group-readable recursively, with a default ACL so
 #        new transcripts inherit readability
-#    The .env file stays private because its explicit 600 mode caps the ACL
-#    mask — group access to it is nil regardless of the default ACL.
-#    The workspace stays private because its 700 dir mode blocks traversal.
+#      - /srv/mind/workspace is group-readable recursively, with a default
+#        ACL so everything the mind writes tomorrow is born readable —
+#        reading the real files beats reconstructing them from transcripts
+#    The .env file stays private because it lives OUTSIDE the workspace with
+#    an explicit 600 mode that caps the ACL mask — group access to it is nil
+#    regardless of the default ACL. Writes stay impossible everywhere: no
+#    grant here exceeds read+traverse, and the agents' settings deny the
+#    rest.
 # ----------------------------------------------------------------------------
 
 log "configuring read-only cross-access"
@@ -376,6 +383,14 @@ install -d -o mind -g ledger-readers -m 2750 /srv/mind/logs
 install -d -o mind -g ledger-readers -m 2750 /srv/mind/logs/daily
 setfacl -R -m "g:ledger-readers:rX" /srv/mind/logs
 setfacl -R -d -m "g:ledger-readers:rX" /srv/mind/logs
+
+# The workspace: the window reads the mind's real files — verbatim, not
+# reconstructed. The ACL grants read+traverse only; the 700 base mode
+# still excludes everyone outside the group.
+if [ -d /srv/mind/workspace ]; then
+  setfacl -R -m "g:ledger-readers:rX" /srv/mind/workspace
+  setfacl -R -d -m "g:ledger-readers:rX" /srv/mind/workspace
+fi
 
 # The UI side keeps the same structured daily logs (web server and
 # UI-manager supervisor both write there as the ui user).

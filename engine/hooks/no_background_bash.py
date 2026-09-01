@@ -41,10 +41,13 @@ def main() -> int:
         "headless sessions. Your session ends the moment you stop calling "
         "tools — a backgrounded task dies with it and can NEVER notify or "
         "re-invoke you; any 'you will be notified' text does not apply "
-        "here. Instead: do the work in the FOREGROUND (a loop with sleeps "
-        "inside one Bash call is fine — raise `timeout` up to 600000 ms), "
-        "or split it across wakes: place the order / arm triggers.json, "
-        "write your schedule, and let the sentinel wake you.")
+        "here. Instead: wait in the FOREGROUND with a polling loop inside "
+        "one Bash call — `until <check>; do sleep 5; done` or a bounded "
+        "`for` loop with sleeps, `timeout` raised up to 600000 ms. (A bare "
+        "`sleep N && cmd` chain may be separately refused by the harness; "
+        "the polling-loop form is the sanctioned wait.) Or split the work "
+        "across wakes: place the order / arm triggers.json, write your "
+        "schedule, and let the sentinel wake you.")
     return 2
 
 

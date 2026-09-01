@@ -261,7 +261,10 @@ PORT=3100 node .next/standalone/server.js   # then curl your routes
 Never print these values into logs, transcripts, commits, or the UI.
 Paths that are NOT env vars (plain read-only filesystem access): the
 trader's journals at `/srv/mind/workspace/journal/` and its session
-transcripts at `/srv/mind/logs/sessions/`.
+transcripts at `/srv/mind/logs/sessions/`. Journals may arrive as
+several files for one day (`YYYY-MM-DD.md` plus suffixed siblings like
+`YYYY-MM-DD-<topic>.md`) — anything keyed by bare date silently drops
+entries.
 
 ## Quality bar
 

@@ -30,3 +30,6 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# local operator notes — never shipped
+audits/

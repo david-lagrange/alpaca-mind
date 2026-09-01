@@ -69,5 +69,11 @@ async function handlePost(request: NextRequest) {
   ) {
     return NextResponse.json({ ok: true });
   }
-  return NextResponse.redirect(new URL("/inbox", request.url), 303);
+  // Relative Location, deliberately: behind a reverse proxy,
+  // request.url reflects the server's own bind address, and an
+  // absolute redirect built from it walks the browser off the site.
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: "/inbox" },
+  });
 }

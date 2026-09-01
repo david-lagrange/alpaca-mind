@@ -25,11 +25,25 @@ triggers.json (agent-written at session close):
                                         # effort, run_type, and charter
                                         # the trigger names
     {"id": "iv-pop", "type": "pct_move", "symbol": "QQQ",
-     "value": 2.5, "window_min": 15},
+     "value": 2.5, "window_min": 15, "cooldown_minutes": 60},
     {"id": "fill", "type": "order_fill", "order_id": "abc-123"}
   ],
   "expire": "..."   # optional; protective triggers are typically
 }                   # armed without a bound
+
+Re-fire semantics: a trigger whose condition HOLDS fires again every
+debounce interval (min_wake_interval_minutes) — that is what keeps a
+protective level loud until it is answered. For condition-that-holds
+sensors (a pct_move during a sustained gap, a range that stays broken)
+that behavior is a wake loop, not a sensor; the optional per-trigger
+`cooldown_minutes` stretches THAT trigger's own re-fire spacing without
+touching anything else. Values below the global debounce, or malformed,
+fall back to the debounce — a typo must never silence a tripwire. The
+fired-timestamp map is in-memory: a sentinel restart clears all
+cooldowns and an armed, still-true condition may fire once more.
+Triggers also accept optional `not_before` / `not_after` ISO-8601
+fields; outside the window the trigger is silent (malformed values fail
+OPEN — the trigger stays armed).
 
 Option symbols (OCC format) are watched through the options quote feed;
 stock symbols through the stock feed — one triggers file covers both.
@@ -248,7 +262,18 @@ class Sentinel:
             # never silently disarm a protective tripwire.
             if not self._in_window(t, tid):
                 continue
-            if time.time() - self.fired.get(tid, 0) < debounce:
+            # Per-trigger cooldown may stretch the re-fire spacing for a
+            # condition that holds; it can never shrink below the global
+            # debounce, and a malformed value falls back to it (fail
+            # open — a typo must never silence a tripwire).
+            spacing = debounce
+            cool = t.get("cooldown_minutes")
+            if cool is not None:
+                try:
+                    spacing = max(float(cool) * 60.0, debounce)
+                except (TypeError, ValueError):
+                    pass
+            if time.time() - self.fired.get(tid, 0) < spacing:
                 continue
             # One malformed trigger must never abort the loop: an
             # unhandled schema error here would blind EVERY sense —

@@ -132,6 +132,11 @@ for u in mind ui; do
     log "creating user $u"
     useradd --system --create-home --home-dir "/srv/$u" --shell /bin/bash "$u"
   fi
+  # A user-level git identity (machine-local name only), so ANY repo an
+  # agent creates for itself — not just the seeded workspace — can
+  # commit without an empty-ident failure.
+  sudo -u "$u" -H git config --global user.name "$u" 2>/dev/null || true
+  sudo -u "$u" -H git config --global user.email "$u@localhost" 2>/dev/null || true
 done
 
 # ----------------------------------------------------------------------------

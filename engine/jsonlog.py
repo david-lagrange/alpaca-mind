@@ -68,6 +68,13 @@ class JsonLogger:
         self._day: str | None = None
         self._capped = False
 
+    def stderr_floor(self, level: str) -> None:
+        """Raise the stderr sink's threshold (never lowers it). The
+        daily file is unaffected — it always receives every level. For
+        tools whose stdout is a machine protocol: callers commonly
+        merge streams (2>&1), and narration would corrupt the payload."""
+        self.min_level = max(self.min_level, _LEVELS.get(level, 30))
+
     def bind(self, **kv) -> "JsonLogger":
         """A child logger whose records all carry these key-values —
         e.g. bind(session_id=...) so every line of a session correlates."""

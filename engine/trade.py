@@ -31,7 +31,7 @@ Usage (all output is JSON on stdout):
               [--type market|stop|stop_limit] [--stop-price X] [--limit-price X]
   trade cancel --order-id VENUE_ORDER_ID
   trade reconcile [--heal]
-  trade recent [--days 7]
+  trade recent [--days 7]                  # CLOSED trades + open count
   trade news [--symbols A,B] [--hours 24] [--limit 30]
   trade events [--minutes 15] [--kind a,b] [--limit 50]
   trade reviewed TRADE_ID
@@ -697,6 +697,12 @@ def main() -> None:
     log = get_logger("trade")
     if os.environ.get("MIND_SESSION_ID"):
         log = log.bind(session_id=os.environ["MIND_SESSION_ID"])
+    # stdout is this tool's machine protocol. When stderr is not a
+    # terminal, callers commonly merge the streams (2>&1) and info
+    # narration would land ahead of the JSON payload and corrupt it —
+    # keep warnings and errors; the daily file still gets every record.
+    if not sys.stderr.isatty():
+        log.stderr_floor("warn")
 
     ledger = Ledger(cfg["paths"]["ledger"])
     venue = Venue()
@@ -806,12 +812,22 @@ def main() -> None:
             out({"ok": True, "trade_id": args.trade_id,
                  "reviewed": 1, "was_already": bool(t["reviewed"])})
         elif args.cmd == "recent":
-            out(ledger.query(
+            # Closed trades only, by design — an empty list with an open
+            # book reads as "the ledger lost my trades" unless the open
+            # count travels with it.
+            closed = ledger.query(
                 "SELECT id, ts_close, symbol, side, qty, entry_price, "
                 "exit_price, fees, pnl, pnl_pct, thesis, exit_reason, "
                 "structure_id FROM trades WHERE status='closed' AND "
                 "ts_close>=? ORDER BY ts_close DESC",
-                (time.time() - args.days * 86400,)))
+                (time.time() - args.days * 86400,))
+            open_n = ledger.query(
+                "SELECT COUNT(*) AS n FROM trades WHERE status='open'"
+            )[0]["n"]
+            out({"days": args.days, "closed": closed,
+                 "open_trades": open_n,
+                 "note": "recent lists CLOSED trades; the open book is "
+                         "`trade positions` (venue) or the trades table"})
     except SystemExit:
         raise
     except Exception as e:

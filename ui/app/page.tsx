@@ -79,9 +79,9 @@ export default async function HomePage() {
               <p className="mt-2 font-mono text-sm text-ink">
                 {lastSession.run_type} · {formatWhen(lastSession.ts_start)}
               </p>
-              {lastSession.summary ? (
+              {lastSession.result_summary ? (
                 <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-muted">
-                  {lastSession.summary}
+                  {lastSession.result_summary}
                 </p>
               ) : (
                 <p className="mt-2 text-sm text-faint">No summary recorded.</p>

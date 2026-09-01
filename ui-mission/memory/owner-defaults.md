@@ -31,6 +31,10 @@ it best.
 - **The deep-dive pattern**: surface every idea in simple, easy, clear
   language first; put the depth (a full report page) one click behind
   it. The owner skims by default and dives by choice.
+- **The interface acknowledges me**: when I act in it, I can see that
+  something happened — a message I send is visibly received, and when
+  I summon a pass I can see that it is running and see when it
+  finished. A button that gives no feedback reads as broken.
 - **Anything great I find** in the journals or transcripts that would
   make this window better belongs on it — that judgment is mine and my
   owner wants me to use it.

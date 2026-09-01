@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import MobileNav from "@/components/MobileNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -44,20 +45,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen">
-        <header className="sticky top-0 z-10 border-b border-edge bg-bg/90 backdrop-blur md:hidden">
-          <div className="flex h-14 items-center gap-6 overflow-x-auto px-5">
+        {/* Small screens: sticky bar with a drawer (see components/
+            MobileNav.tsx — a gift to restyle or replace; keep its
+            behaviors in whatever replaces it). */}
+        <header className="sticky top-0 z-30 border-b border-edge bg-bg/90 backdrop-blur md:hidden">
+          <div className="flex h-14 items-center px-5">
             <Brand />
-            <nav className="flex items-center gap-5">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="whitespace-nowrap text-sm text-muted transition-colors hover:text-ink"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+            <MobileNav links={NAV_LINKS} />
           </div>
         </header>
 

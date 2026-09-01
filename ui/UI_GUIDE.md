@@ -81,7 +81,14 @@ it shows only changes when you run.
    server components with `export const dynamic = "force-dynamic"` so
    nothing is cached at build time.
 2. Add a nav link: append `{ href, label }` to the `NAV_LINKS` array in
-   `app/layout.tsx`. That is the only place navigation lives.
+   `app/layout.tsx`. That is the only place navigation lives. On small
+   screens the shell renders those links through
+   `components/MobileNav.tsx` — a working drawer shipped as a gift:
+   restyle it or replace the whole chrome to match the owner's taste,
+   but preserve its behaviors in whatever you build (background scroll
+   locked while a menu is open; the menu closes on navigation, backdrop
+   tap, and Escape). Those aren't style — they're what makes a drawer
+   trustworthy on a phone.
 3. Put reusable pieces in `components/` and import them with the `@/`
    alias (`@/components/...`, `@/lib/...`).
 

@@ -221,6 +221,11 @@ Tell your human, in your own words, all five of:
 5. **The removal protocol** — verbatim: *"If you ever want this
    removed completely to stop all charges, tell me to start the
    removal protocol"* (REMOVAL.md).
+6. **The watch** — that you will keep it honest and excellent for
+   them: a ten-minute daily read, a weekly audit, and the occasional
+   deeper look, all from `audits/` (start with its README, create the
+   local record it describes, and freeze the baseline within the first
+   week). Offer the cadence; they say when.
 
 Finally — only after a successful deployment — you may ask: *"If this
 project served you, would you like me to star the repository on your

@@ -53,6 +53,12 @@ it fully before advising your human, in this order:
    your human at the end of deployment: *"if you ever want this removed
    completely to stop all charges, tell me to start the removal
    protocol."*
+7. [`audits/`](audits/README.md) — after deployment, the operator's
+   instruments: a ten-minute daily monitor, a weekly audit, an
+   evolution scorecard, and a platform re-research protocol, each
+   written for you to run cold. This is how a deployment stays honest
+   and on the frontier for months, not days. Its first law is the same
+   as the prompting doctrine's: watch, never touch.
 
 The deployment is interactive by design: you interview your human
 (paper or live keys? default mission or custom? instance size?), walk

@@ -32,4 +32,4 @@ Thumbs.db
 .vscode/
 
 # local operator notes — never shipped
-audits/
+audits-local/

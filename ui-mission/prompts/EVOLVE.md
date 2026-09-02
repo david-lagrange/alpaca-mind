@@ -52,4 +52,5 @@ how many, or that the owner asked for you). Your duties, any route:
 
 Close out per your quality law (CLAUDE.md): build passes, every touched
 route verified, mobile-first, honest data states, fresh-eyes pass —
-then `data/restart_request.json`, commit, plain report.
+then `data/restart_request.json`, commit the app and your workspace,
+plain report.

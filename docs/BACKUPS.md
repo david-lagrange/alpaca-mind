@@ -45,6 +45,15 @@ instance-type change, an engine upgrade.
 
 ## Restore onto a fresh stack (the resurrection)
 
+**Read this first if the original deployment is still alive** (a
+drill, or a migration with overlap): a fresh stack's genesis
+awakening fires the moment its services start, before step 1's stop
+can run — so a scratch stack that reads the same SSM prefix would
+wake a second mind on the same brokerage account — paper included (a
+paper login has one paper account). Give the scratch stack its own
+`SsmPrefix` holding keys for a *different* account, revoke them after,
+and switch it to the real keys only after the original is gone.
+
 1. Deploy the stack; wait for setup to finish; stop the agents:
    `run 'systemctl stop mind-supervisor mind-sentinel ui-supervisor ui-web'`
 2. Pull and unpack the chosen archive over the seeded state:
@@ -71,8 +80,9 @@ instance-type change, an engine upgrade.
 5. Sanity: `run 'systemctl is-active mind-supervisor mind-sentinel ui-supervisor ui-web'`
    → four × `active`; the UI should show the mind's history intact.
    Then, as the mind user, `trade reconcile` — positions at the venue
-   may have moved while the mind was down, and the reconciler heals
-   the ledger against venue truth.
+   may have moved while the mind was down, and this shows the
+   divergence. Healing it is the mind's own first job on waking (or
+   your human's call), not yours: never run `--heal` on its behalf.
 
 ## The manual brain export
 

@@ -38,9 +38,9 @@ redeploying does not overwrite a living brain):
 
 Edit → commit to your human's fork → deploy with
 `RepoUrl=<fork clone URL>` (DEPLOYMENT.md §3). For an already-deployed
-instance, mission changes are the AGENT's to adopt: put a note in its
-workspace (`state/` — an "owner note" file), or simply tell it via its
-inbox-visible journal culture; never overwrite a living workspace from
+instance, mission changes are the AGENT's to adopt: tell it through
+the owner note (OPERATIONS.md, "The owner's controls") as facts about
+its world, and let it decide; never overwrite a living workspace from
 outside.
 
 ## Mission ideas beyond the default (offer these if asked)

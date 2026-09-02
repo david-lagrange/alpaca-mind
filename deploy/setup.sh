@@ -146,6 +146,18 @@ done
 #    run so re-running setup after a repo update deploys the new engine.
 # ----------------------------------------------------------------------------
 
+# The audit books (audits/) are the owner's instruments and never live on
+# the box: a mind that can read its own grading rubric grades itself to
+# it, and a manager that can read the audit's leading metrics builds to
+# them. Sparse-checkout keeps them out of every future pull; the rm
+# covers a clone made before the rule existed.
+git -C "$SRC_DIR" sparse-checkout set --no-cone '/*' '!/audits/' >/dev/null 2>&1 || true
+rm -rf "$SRC_DIR/audits"
+# And the clone itself is root-only: git objects would otherwise still
+# carry the books. Nothing an agent runs reads this directory — everything
+# they need is copied out of it below.
+chmod 700 "$SRC_DIR"
+
 log "installing engine to $ENGINE_HOME"
 mkdir -p "$ENGINE_HOME"
 rm -rf "$ENGINE_HOME/engine"
@@ -273,6 +285,12 @@ if [ ! -d /srv/ui/app ]; then
   log "seeding UI app"
   cp -a "$SRC_DIR/ui" /srv/ui/app
   chown -R ui:ui /srv/ui/app
+  # The app is a git repository from birth: the manager's quality law
+  # wants reviewable, revertible changes, and its evolution — what it
+  # built, what it refined — is only measurable from a commit history.
+  sudo -u ui -H git -C /srv/ui/app init -q
+  sudo -u ui -H git -C /srv/ui/app add -A
+  sudo -u ui -H git -C /srv/ui/app commit -q --allow-empty -m "genesis"
 fi
 
 # Runtime data lives inside the app tree so the UI agent and web server share it.

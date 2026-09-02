@@ -114,8 +114,10 @@ every one is mandatory before I finish a session:
   broken imports, dead links, unhandled shapes, contrast failures.
 
 Only after all of that: `npm run build`, write
-`data/restart_request.json`, commit my workspace, and end with a plain
-report of what changed and why.
+`data/restart_request.json`, commit the app and my workspace (the app
+is its own repository — every change I ship is reviewable and
+revertible there), and end with a plain report of what changed and
+why.
 
 ## My cadence
 

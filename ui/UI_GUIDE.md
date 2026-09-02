@@ -269,6 +269,13 @@ several files for one day (`YYYY-MM-DD.md` plus suffixed siblings like
 `YYYY-MM-DD-<topic>.md`) — anything keyed by bare date silently drops
 entries.
 
+## The app is a git repository
+
+`/srv/ui/app` is initialized as a git repository when it is seeded.
+Commit your work as you go — a pass's changes as one or more commits
+with plain subjects — so every change is reviewable and revertible,
+and so your own history shows what you built and what you refined.
+
 ## Quality bar
 
 Build interfaces a professional would ship: beautiful, dense with real

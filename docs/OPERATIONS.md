@@ -25,6 +25,17 @@ run() { aws ssm send-command --instance-ids $IID \
    pair with `session_finish exit_code=0` (or read the same stream
    with filters on the UI's Logs page).
 
+## Beyond the glance: the audit books
+
+The daily glance above says "it's up." Whether it is actually working,
+learning, and telling the truth — and whether it is still on the
+frontier months from now — is the job of the operator's instruments
+in [`../audits/`](../audits/README.md): a ten-minute daily monitor, a
+weekly audit, an evolution scorecard, and a platform re-research
+protocol, each written for you to run cold. They never travel to the
+box (the setup script strips them from the on-box clone), and their
+first law is the one this page states next: watch, never touch.
+
 ## Before you change anything an agent reads
 
 Any edit to a mission file, a charter, or any text that enters an
@@ -42,6 +53,39 @@ with examples.
   Remove the file to resume. This is the owner's right, always.
 - **The inbox** (in the UI): requests for what to SEE. It steers
   visibility, never trades.
+- **The owner note** (to the trader): the one sanctioned way to tell
+  the mind something about its world — a fact about the account, the
+  venue, the machine, or a situation it cannot see. As the `mind` user,
+  append to `/srv/mind/workspace/state/OWNER_NOTE.md`, then file
+  `state/wake_request.json` with a `reason` that names the note (and
+  a `wake_as` block if you want to choose the mind and effort that
+  reads it). The next wake reads it. Write facts, never routes —
+  PROMPTING.md's first law applies to every word, because an owner
+  note is the strongest anchor a mind can receive. Never edit
+  anything else in the workspace; it is the agent's own.
+  The request's shape:
+  ```json
+  {"requested_at": "<UTC ISO-8601>",
+   "reason": "OWNER NOTE: a note from your owner is at the bottom of state/OWNER_NOTE.md — <one line on what it concerns>.",
+   "context": {"source": "owner"}, "protective": false,
+   "wake_as": {"model": "fable", "effort": "medium"}}
+  ```
+  Filing the request is an immediate wake: a full session under the
+  trading charter, at the mind and effort you name — choose them for
+  the stakes of what you are telling it. Timing: file it while the
+  mind is asleep, and — if positions are open — while the market is
+  closed. The sentinel's wake request is a single slot: a request of
+  yours sitting in it while a protective tripwire fires would displace
+  that fire. Confirm it was read: `wake_request_serviced` followed by
+  a `session_finish` with exit 0 in the log stream (a seat at its plan
+  limit can consume the request without a session — re-file). Date
+  each note, and once the servicing transcript shows it read, remove
+  it (as the `mind` user): an owner-authored file that only grows in
+  `state/` is exactly the anchor PROMPTING.md tells you to delete.
+  What a note may carry: facts about its world, and observed patterns
+  in its own behavior stated as counts over a window — never a route,
+  a suggestion, or a number about spend. In showcase mode, assume the
+  note will be rendered publicly by the manager.
 - **Read the mind directly:** journals
   (`/srv/mind/workspace/journal/`), rendered transcripts
   (`python3 /opt/alpaca-mind/engine/render_transcript.py
@@ -115,8 +159,8 @@ durable. Total time ~10 minutes; certificates are automatic.
    ```
    The `http://` catch-all bounces old bare-IP links to the real
    address. (apt's needrestart may bounce agent services during the
-   install — harmless between sessions; check nothing was mid-session
-   first, like any engine update.)
+   install — gate it like any engine update: HALT both agents, wait
+   for open sessions to close, install, un-HALT.)
 4. **Verify from outside:** the domain resolves to the Elastic IP;
    `https://` serves 200 with a valid certificate; `http://` redirects;
    the app's auth behavior is unchanged (Basic Auth sits behind the
@@ -146,13 +190,16 @@ run '/opt/alpaca-mind/backup.sh'                    # force one now
 
 - **Engine/UI-scaffold updates from the repo:** redeploying the stack
   replaces the instance (new AMI resolution) — force a backup first
-  and restore after (BACKUPS.md). In-place engine updates: `git -C /opt/alpaca-mind-src
-  pull && cp -r /opt/alpaca-mind-src/engine /opt/alpaca-mind/ &&
-  systemctl restart mind-supervisor mind-sentinel ui-supervisor` —
-  between sessions, never during one (check the log stream for a
-  `session_launch` without a matching `session_finish` first).
+  and restore after (BACKUPS.md). In-place engine updates, gated by
+  the kill switches so no session can start underneath you: touch
+  `/srv/mind/workspace/state/HALT` and `/srv/ui/workspace/state/HALT`;
+  wait until both ledgers show no session without an end time; then
+  `git -C /opt/alpaca-mind-src pull && cp -r
+  /opt/alpaca-mind-src/engine /opt/alpaca-mind/ && systemctl restart
+  mind-supervisor mind-sentinel ui-supervisor`; remove both HALT
+  files; confirm the next wakes are intact.
 - **Claude CLI:** pinned via the stack parameter; upgrade deliberately
-  (install the new version as each user, between sessions), never
+  (install the new version as each user, HALT-gated as above), never
   automatically. **A CLI upgrade is a model upgrade**: the engine names
   models by alias (`fable`, `opus`, `sonnet`), and aliases resolve inside
   the CLI — a new pin can move the mind onto a newer model of the same

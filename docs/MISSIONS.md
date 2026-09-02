@@ -68,4 +68,8 @@ Anything the agent genuinely needs to know about its situation belongs
 in CLAUDE.md as a stated FACT of its world (account type, universe,
 any real-world constraint of the venue or account). Facts inform;
 directives cage. Write "this account cannot short" (fact), not "never
-be bearish" (directive).
+be bearish" (directive). One class of fact is never a fact of its
+world: the economics of running it — price, usage, plan, limits,
+budget. PROMPTING.md L11 is absolute; the seat a deployment runs on
+shapes the seeded schedule and config, never a sentence the mind
+reads.

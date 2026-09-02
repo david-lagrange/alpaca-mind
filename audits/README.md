@@ -85,16 +85,18 @@ the method improves the way the engine does.
    the agent, no "consider", no "you should", no example of what a
    better version would look like. The operator is a named threat
    vector; an audit report about anchoring must not itself anchor.
-5. **Economics are operator-only.** The agents can read their own
-   session rows — the ledger is their history, cost column included
-   — but they never receive spend, caps, plan limits, or usage as a
-   *message*, and no optimization ever trims their capability: levers
-   are wake hygiene, config defaults edited repo-first, and pruning —
-   never effort floors, context cuts, or "be cheaper." A mind that
-   learns it is expensive learns to be small. The levers that reach
-   its rhythm are pre-birth seed choices (`docs/MISSIONS.md`); after
-   birth the rhythm is its own. OPS-BOOK §6 says what a seat's limits
-   look like from outside.
+5. **Economics never enter a mind — not once, not ever.** No price,
+   cost, usage, plan, seat, limit, or budget reaches an agent from
+   you: not as a message, not as a fact, not as an aside in a note
+   about something else. `docs/PROMPTING.md` L11 is absolute and this
+   folder inherits it. One such line compounds through every facet of
+   a mind until it thinks less; there is no recovering it. All
+   shaping of compute is yours, done where the mind cannot perceive
+   it — the seeded schedule and config defaults before birth, wake
+   hygiene after — and every word that does reach it encourages the
+   opposite: no ceiling, full effort, full care. The cost columns in
+   the ledger are shape data for *your* bloat detection; OPS-BOOK §6
+   says what a seat's limits look like from outside.
 6. **Statistical honesty.** No outcome verdict on an outcome-starved
    sample; every window stated; luck within two standard deviations
    called luck. The curve shows in the leading metrics first — that is

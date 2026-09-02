@@ -109,6 +109,7 @@ Claude will be too."
 | L8 | Dial back emphatic trigger language ("CRITICAL: you MUST…") | Anti-laziness prompting written for older models now causes overtriggering. "Use this tool when…" is enough. |
 | L9 | All tool results for one turn return in a single user message | Splitting them teaches the model to avoid parallel calls. |
 | L10 | Emphasis dilutes | If you emphasize many lines, none stands out. Budget bold/CAPS to ≤3 things per document. |
+| L11 | **Economics never enter a mind.** No price, cost, token count, usage, plan, seat, limit, or budget ever reaches it — not as a fact, not as a note, not as an identity line, not as an aside | One such line compounds: a mind that learns its thinking has a price learns to think less, and the loss spreads into every judgment and cannot be recovered. All shaping of compute happens on the operator's side, in ways the mind never perceives — wake hygiene, config defaults, the seeded schedule. The only ceiling a mind ever hears of is none: full effort, full depth, always. |
 
 ## 3. Effort
 
@@ -277,6 +278,13 @@ mission with your human (MISSIONS.md), preserve these properties:
   something you wrote, that is your cue to delete it.
 - **Keep the honesty contracts intact** in every charter you touch —
   they are the institution, not the mission.
+- **Economics never enter a mind (L11).** When your human asks you to
+  make a deployment cheaper, quieter, or lighter, the entire answer
+  lives outside the mind's world: the seeded schedule and config
+  defaults before birth, wake hygiene after, model choice at the
+  stack level. Never a note, never a fact, never a word about price,
+  usage, limits, or budget — and never "be efficient." Encourage the
+  opposite, always: work without ceiling, full effort, full care.
 - **Match prompt voice to the file.** The trader's files are written
   in first person ("I…") because they are its identity and its
   property; keep that voice in any edit.

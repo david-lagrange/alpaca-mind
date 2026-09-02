@@ -29,7 +29,11 @@ hour. **Max (20x)** (~$200/mo) runs that comfortably; **Max (5x)**
 (~$100/mo) works with a more modest cadence — the agent owns its own
 schedule and can trim it, and the model defaults in `config/mind.yaml`
 are one edit. The agent never sees usage numbers — if a plan's limits
-are hit, sessions wait rather than degrade.
+are hit, sessions wait rather than degrade. That sentence is a law,
+not a convenience (PROMPTING.md L11): economics never enter a mind,
+not once, because a mind that learns its thinking has a price learns
+to think less. Every cost lever in this document is yours to pull
+outside its world — never a word to it.
 
 **3. Alpaca ($0 — optionally $99/month).** Paper trading is free,
 with free real-time market data sufficient for the default setup (the

@@ -44,7 +44,8 @@ it fully before advising your human, in this order:
    [`docs/PROMPTING.md`](docs/PROMPTING.md) first. It is binding
    craft, and its first law (a suggestion becomes an instruction; a
    list becomes a map) is the one most often broken with good
-   intentions.
+   intentions. Its eleventh — economics never enter a mind, not once —
+   is absolute.
 5. [`docs/SECURITY.md`](docs/SECURITY.md) and
    [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — the boundaries, and
    day-2 life (which points into [`docs/LOGGING.md`](docs/LOGGING.md)

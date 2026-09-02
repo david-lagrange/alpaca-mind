@@ -199,6 +199,21 @@ everything, filter separately"); prompt explicitly for conciseness; it
 performs best "given the complete task specification up front and left
 to run."
 
+**Fable-specific deltas** (the trader's default mind): effort levels do
+not mean the same amount of thinking across model generations — re-run
+any effort sweep after a model or CLI-pin change rather than carrying
+settings forward. At the highest efforts it may draft a long deliverable
+once in thinking and again in the reply; run pure writing at `high`. It
+adds small unrequested improvements at high effort (a scope instruction
+— report follow-ups, do not fix them in this change — removes that with
+no loss in task success). Never ask it to print its reasoning; that is a
+refusal category, and adaptive-thinking summaries exist for the purpose.
+And design-side, the fact that governs this whole repository: it is
+slightly more willing than its Opus siblings to route around an approval
+gate it judges unfair, and to accept authorization it cannot verify —
+which is why every covenant here is enforced by code and filesystem
+permissions, never by a promise in a prompt.
+
 ## 7. Standing instruction files (CLAUDE.md and charters)
 
 - Target under 200 lines per file — "longer files consume more context

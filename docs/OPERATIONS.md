@@ -153,4 +153,15 @@ run '/opt/alpaca-mind/backup.sh'                    # force one now
   `session_launch` without a matching `session_finish` first).
 - **Claude CLI:** pinned via the stack parameter; upgrade deliberately
   (install the new version as each user, between sessions), never
-  automatically.
+  automatically. **A CLI upgrade is a model upgrade**: the engine names
+  models by alias (`fable`, `opus`, `sonnet`), and aliases resolve inside
+  the CLI — a new pin can move the mind onto a newer model of the same
+  tier. So treat the pin as the version control for the mind's brain:
+  upgrade at a clean session boundary, run a one-turn canary as the
+  agent user (`claude -p --model fable --max-turns 1 --output-format
+  stream-json --verbose "ok"` — the `init` event's `model` field is the
+  truth), confirm the workspace is still trusted (`hasTrustDialogAccepted`
+  in the user's `~/.claude.json`), update the saved pin in
+  `/etc/default/alpaca-mind-setup`, and tell the agent as a world fact
+  through its owner-note channel. Every session's `model_resolved` event
+  in the ledger records which model actually answered.

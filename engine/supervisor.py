@@ -726,6 +726,20 @@ class Supervisor:
                     if line.startswith("{"):
                         try:
                             evt = json.loads(line)
+                            if evt.get("type") == "system"                                     and evt.get("subtype") == "init":
+                                # The alias is what we asked for; the
+                                # init event says what actually answered.
+                                # Aliases follow the CLI pin, so the
+                                # record must carry the resolved id.
+                                slog.info("session_model_resolved",
+                                          alias=alias,
+                                          model=evt.get("model"),
+                                          cli=evt.get("claude_code_version"))
+                                self.ledger.record_event(
+                                    "supervisor", "model_resolved",
+                                    {"session_id": session_uuid,
+                                     "alias": alias,
+                                     "model": evt.get("model")})
                             if evt.get("type") == "result":
                                 results.append(evt)
                                 u = evt.get("usage") \

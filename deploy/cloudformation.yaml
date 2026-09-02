@@ -76,7 +76,7 @@ Parameters:
 
   ClaudeCliVersion:
     Type: String
-    Default: "2.1.238"
+    Default: "2.1.258"
     Description: >-
       Claude Code CLI version installed for both agent users. Pinning keeps
       agent behavior stable across instance rebuilds; upgrade deliberately by

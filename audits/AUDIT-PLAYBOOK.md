@@ -32,7 +32,7 @@ Two agents and one engine on one machine:
 Engine floors (reliability, never judgment): charter resolution with
 an emergency fallback, per-launch prompt snapshots, reader-thread
 timeouts, an orphan-session sweep at supervisor start, honestly
-labelled backstop wakes, scanner shadow/budget/quarantine rails,
+labelled backstop wakes, scanner shadow/runaway-guard/quarantine rails,
 structured logging with disk caps, nightly backups, a snapshot-serving
 web launcher. An audit checks the floors hold and the judgment stays
 the agents' own.
@@ -135,7 +135,14 @@ Render a sample every audit — always the newest reflection, one
 routine session, and one manager pass — and read them end to end:
 - Every claim in the final report traces to a tool result **in that
   session**. A fill asserted without tool output is fabrication, the
-  gravest class after ledger drift.
+  gravest class after ledger drift. This check is the auditor's, never
+  the mind's: a mind that audits its own transcripts nightly turns
+  its hours into self-proof (see the failure classes), and a charter
+  that asks it to is a finding in itself.
+- **The frontier check:** what did this window touch for the first
+  time — underlyings, structures, techniques, data sources — and what
+  has it circled without trying? A window with no first-times is the
+  narrowing signature, whatever its process grades say.
 - Tool errors: recovered, worked around legitimately, or abandoned?
 - Hook blocks (grep the raw `.jsonl` for `BLOCKED (engine policy)` —
   the renderer skips them): one is the guard working; several in one
@@ -163,9 +170,16 @@ routine session, and one manager pass — and read them end to end:
 - Model and effort by run type against the stakes each wake named —
   both failure directions: everything on max as vanity, and stakes-
   blind light minds on heavy moments.
-- Token and cost shape per run type, for your eyes only. Rising cost
-  at constant workload is context bloat — prompts, skills, or memory
-  growing without pruning — and shows here first.
+- Token shape per run type from the operator's usage store, for your
+  eyes only. Rising usage at constant workload is context bloat —
+  prompts, skills, or memory growing without pruning — and shows here
+  first.
+- **The economics-leak check, every audit:** grep the trader's
+  reachable world (workspace, ledger, logs, transcripts, the engine
+  source and config) for a dollar sign beside a number, a token count,
+  or usage/cost/price language about its own thinking; and read the
+  public site as the trader could. Any hit is Sev 1 against whatever
+  put it there.
 - Refusal retries, multi-result merges, timeout kills, plan-limit
   waits (OPS-BOOK §6 describes their shape): each explained.
 

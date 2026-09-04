@@ -33,7 +33,7 @@ habit alive after birth.
 | # | Assumption | What it drove |
 |---|---|---|
 | C1 | Headless `claude -p` with stream-json output, a model alias, a turn cap, skipped permissions, an effort level, the workspace's MCP config, and forwarded subagent text; the CLI **pinned** by stack parameter — upgrades are deliberate canary acts, and **a CLI upgrade is a model upgrade** because aliases resolve inside the CLI | the supervisor's launch — the whole session mechanism |
-| C2 | The result event carries cost, turns, usage, and subtype; a session woken again by a late subagent emits several result events (turns and tokens sum, cost takes the max) | ledger accounting |
+| C2 | The result event carries turns, subtype, duration and the result text, alongside usage fields the engine discards on write (turns sum across the several result events a late subagent can cause); usage exists only in the operator's store, built from the CLI's own session files | the transcript writer's projection; the usage collector |
 | C3 | Model aliases resolve; the init event names the resolved model; effort is behavioral, not a token budget | per-wake mind choice (agent-owned); `model_resolved` events |
 | C4 | No native scheduling, triggers, or budgets — the supervisor, sentinel, and bell exist for that reason | the engine's reason to exist; the first thing to re-check each pass |
 | C5 | Workspace `.claude/`: identity file, instrument roster, settings deny rules, a pre-tool hook (exit 2 blocks); **workspaces must be pre-trusted** or permission rules are silently ignored — setup does this; re-verify after any CLI upgrade | security posture |

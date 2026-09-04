@@ -34,7 +34,8 @@ run "jq -r 'select(.component==\"supervisor\")|.event' /srv/mind/logs/daily/$(da
 The lifecycle backbone, per side: `startup` → wake decisions
 (`slot_due`, `wake_request_serviced`, `one_shot_wake`,
 `backstop_fired`, `notify_wake`…) → `session_launch` →
-`session_finish` (exit code, turns, tokens, duration). Trading truth:
+`session_finish` (exit code, turns, duration — never tokens or cost;
+economics are not logged anywhere an agent reads). Trading truth:
 `order_intent_recorded` → `order_placed` → `fill_adopted` /
 `order_terminal`; `trigger_fire` and `scanner_fire` for the sensors;
 `unrecorded_fill` is the loud failsafe that deserves immediate

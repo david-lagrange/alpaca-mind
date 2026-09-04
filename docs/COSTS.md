@@ -35,6 +35,18 @@ not once, because a mind that learns its thinking has a price learns
 to think less. Every cost lever in this document is yours to pull
 outside its world — never a word to it.
 
+**How the machine keeps that law.** Nothing the trader can reach
+records usage: its ledger's session rows hold turns and duration, not
+tokens or cost; the engine's log lines hold the same; the transcripts
+the engine writes keep the conversation and drop the CLI's usage
+fields; and the engine source it may read to triage itself computes
+none of it. If you want usage at all, it lives in one separate place:
+a root-only collector (`deploy/ops/`, installed outside the engine
+tree) reads the CLI's own session files and aggregates tokens per
+session into `/var/lib/alpaca-mind/ops/usage.db`, readable by the UI
+manager only, shown only behind the owner login. `USAGE_STORE=off`
+at setup and even that does not exist.
+
 **3. Alpaca ($0 — optionally $99/month).** Paper trading is free,
 with free real-time market data sufficient for the default setup (the
 free options data feed serves indicative quotes and greeks). The paid

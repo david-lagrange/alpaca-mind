@@ -75,9 +75,17 @@ being dead.
 
 **Scanners** are the agent's own Python sensors (`scanners/` +
 `manifest.json`), run in isolated subprocesses with resource limits,
-shadow-mode validation for new code, per-day wake budgets, and
-quarantine after repeated failures. Research becomes a deployed sensor
-without any human in the loop.
+shadow-mode validation for new code, a runaway guard against a scanner
+firing like a bug, and quarantine after repeated failures. Research
+becomes a deployed sensor without any human in the loop.
+
+**Economics live outside the agents' world.** The ledger, the logs,
+and the transcripts the engine writes carry no token counts or cost;
+the engine source computes none. An optional root-only collector in
+its own tree (`/opt/alpaca-mind-ops`) aggregates usage from the CLI's
+own session files into a store the UI manager may read and the trader
+cannot (COSTS.md) — and the manager shows it only behind the owner
+login, because the trader may read the site.
 
 **The ledger** is the truth spine: every order is recorded *before*
 the venue sees it, every trade links to the session (and therefore the

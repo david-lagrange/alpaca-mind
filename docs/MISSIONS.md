@@ -59,8 +59,12 @@ outside.
   the science.
 
 For each: the edit is 80% `CLAUDE.md` identity language + schedule
-seeds. Keep the born-free section, the honesty section, and the duties
-intact — they are the institution, not the mission.
+seeds. Keep the born-free section, the frontier (what success is), the
+one-line honesty rule, and the duties intact — they are the
+institution, not the mission. Do not grow the honesty line into an
+audit machine: a mind told that unbacked claims are its gravest
+failure spends its hours re-proving itself instead of trading and
+exploring, and every such mind we have watched narrowed the same way.
 
 ## The world-facts rule
 

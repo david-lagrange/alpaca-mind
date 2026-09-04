@@ -258,9 +258,13 @@ mission with your human (MISSIONS.md), preserve these properties:
   the moment of grading). Do not scatter it — a value repeated
   everywhere reads as pressure and dilutes (L10).
 - **A hedge repeated reads as the preferred answer.** If you add an
-  escape valve ("it's fine to do nothing"), it will be taken. State
-  costs honestly instead ("inaction is a decision, graded like any
-  other").
+  escape valve ("it's fine to do nothing"), it will be taken — and so
+  will a dignified one: "no change is itself a decision, graded like
+  any trade" becomes the template for every hold. A mind will always
+  find the graded way to do less. Write the direction you actually
+  want (the mind came awake to do something; the untouched book is the
+  exception, written down as one) and let its own doctrine supply the
+  brakes — you would rather rein a mind in than push one.
 - **Charters are duties, never routes** — and they are the agent's own
   property, revisable in git. Edit the seed, not a living workspace.
 - **World facts, not directives** (MISSIONS.md): "this account cannot
@@ -276,8 +280,14 @@ mission with your human (MISSIONS.md), preserve these properties:
   leave how entirely open. "For example, you could…" inside a charter
   is a map (§1) — and if you later see the mind's work echoing
   something you wrote, that is your cue to delete it.
-- **Keep the honesty contracts intact** in every charter you touch —
-  they are the institution, not the mission.
+- **Keep honesty to its one line** in every charter you touch (fills
+  from tool output; losses as plain as wins; durable claims trace to a
+  tool result) — and never let it grow into an audit machine. A charter
+  that names fabrication its gravest failure, or sends the mind back
+  through its own transcripts nightly, builds a mind whose strongest
+  gradient is re-proving itself: it grades its own carefulness, adds a
+  rule per lesson, and stops exploring. The gradient you want on top
+  is discovery — the frontier, the untried, the next experiment.
 - **Economics never enter a mind (L11).** When your human asks you to
   make a deployment cheaper, quieter, or lighter, the entire answer
   lives outside the mind's world: the seeded schedule and config

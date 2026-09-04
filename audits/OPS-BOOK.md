@@ -52,8 +52,12 @@ the box. `docs/OPERATIONS.md` has the `run()` shape.
    `--path` values); disable that conversion or script the call.
 4. `journalctl --since "…"` and `sqlite3` with embedded quotes never
    work inline through a runner — script them.
-5. On the box, **`sqlite3 -readonly`** for every inspection: a
-   mistyped path otherwise *creates* an empty database.
+5. On the box, **`sqlite3 -readonly`** for every inspection, and only
+   on a path you have just `test -f`'d: a mistyped path otherwise
+   *creates* an empty database — and inside an agent's directory that
+   empty file lands in its next commit and its next session's `git
+   status`. An ad-hoc status script did exactly this once; the
+   collect scripts never did because they were written to the rule.
 6. Workspace git as root prints nothing (git's safe-directory rule) —
    always `sudo -u <user> git -C /srv/<user>/workspace …`.
 7. Manual `trade` invocations need the mind's environment:
@@ -177,10 +181,15 @@ disk under seventy percent; log caps unhit.
   re-materialized wake request before starting services.
 
 ## 6. Cost, usage, and plan limits (operator-only — the standing law)
-Agents never receive spend, caps, or usage as a message. The
-`cost_usd` in the ledgers is API-equivalent shape data on a flat-rate
-seat, read by you for bloat detection, never a bill, never a message
-to an agent. **What a seat limit looks like from outside:** a session
+Agents never receive spend, caps, or usage as a message — and the
+trader's world holds none: no usage in its ledger, its logs, its
+transcripts, or the engine source it reads. Usage, if collected at
+all, lives in the operator's store (`/var/lib/alpaca-mind/ops/usage.db`,
+root-written from the CLI's own session files, readable by the UI
+manager only). Every audit greps the trader's reachable world for a
+dollar sign, a token count, or the words usage/cost/price beside a
+number — any hit is a Sev 1 finding against the base repo, however it
+got there. **What a seat limit looks like from outside:** a session
 that hits the plan's limit ends early with the limit named in its
 result; the supervisor retries with backoff and then sleeps an hour —
 so you see a cluster of short failed sessions, then a gap, then normal

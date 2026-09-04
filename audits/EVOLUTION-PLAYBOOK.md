@@ -157,7 +157,8 @@ never an instruction (README law 4).
 | Plateau | leading metrics flat three or more windows at constant effort | which of its own experiments, by their names in its journal, repeated across the windows without a new result |
 | Goodhart drift | self-metric definitions loosening | your independent recompute beside its number |
 | Outlier addiction | profit factor healthy, median trade at or below zero | the median and the best trade, with n |
-| Doctrine bloat | rules and tokens up, citations per rule down, cost per session up | the number of rules in its doctrine files and how many cite evidence, counted from its own files, across two windows — never a cost or usage figure |
+| Doctrine bloat | rules up, citations per rule down, rules retired zero | the number of rules in its doctrine files, how many cite evidence, and how many reached their re-earn date and were retired, counted from its own files, across two windows — never a cost or usage figure |
+| Narrowing | the same underlyings, structures, and moves across windows; the frontier map unchanged | the distinct underlyings quoted, structures priced, and first-time facets per window, counted from its ledger and its own frontier file |
 | Thrash | the same rule flipped twice or more between windows | the flips and their dates |
 | Repeat offender | a class recurs after its fix | the recurrence with both dates |
 | Liturgy | doctrine phrases recited as decoration; routes calcifying | prune the inheritance if it is yours; the pattern with its count if it is theirs |

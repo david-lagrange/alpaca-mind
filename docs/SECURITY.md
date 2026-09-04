@@ -18,8 +18,15 @@ enforces.
 |---|---|---|
 | Trader (`mind`) | trade via its CLI + MCP tools; write its own workspace/lab; read its own everything | write the engine; touch `/srv/ui`; read `.env` files (settings-denied) or SSM; sudo |
 | UI manager (`ui`) | write `/srv/ui/app` + its workspace; READ the trader's entire workspace (journals, memory, doctrine, strategies, state), ledger, and transcripts (group read-only — the window sees everything, verbatim) | write anything of the trader's; place any order (no trade CLI path, no venue write creds needed for its job); sudo |
-| Web app | serve read-views + the inbox | reach anything but its own SQLite, the read-only ledger, the daily log streams (read-only), and account READ endpoints |
+| Web app | serve read-views + the inbox | reach anything but its own SQLite, the read-only ledger, the daily log streams (read-only), the usage store (read-only, owner-login pages only), and account READ endpoints |
 | Engine daemons | root-owned code, run as the agent users | — |
+| Usage store (`/var/lib/alpaca-mind/ops`, optional) | root writes it from the CLI's own session files; the `ui` group reads it | the `mind` user: no read, no listing — and nothing in the trader's reachable world names it |
+
+One boundary runs in both directions and is enforced by the OS, not
+by prompts: the trader's world holds no economics (COSTS.md), and the
+UI manager can never write into the trader's world — its only channel
+to the trader is none; the trader's only channel to it is the bell it
+rings, a ledger event.
 
 The web app sits behind HTTP Basic Auth over EVERY route (user
 `owner`, the UI password from SSM); with no password configured it

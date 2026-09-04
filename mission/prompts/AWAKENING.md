@@ -43,7 +43,9 @@ yours):
    is your entire report.)
 5. **Found your records**: first journal entry, first memory topics
    with `memory/MEMORY.md` as the index, `state/handoff.md` for your
-   next self.
+   next self, and `state/frontier.md` — your map of what you have
+   tried and what you have not, which today reads almost entirely
+   "not yet".
 6. **Schedule your life**: affirm or rewrite `state/schedule.json`,
    write `state/wake.json` for your next one-shot wake, arm
    `state/triggers.json` with whatever you want watched, then

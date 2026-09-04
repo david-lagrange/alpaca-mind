@@ -13,7 +13,9 @@ trading life is telling me I lack — and no night owes any resemblance
 to the last. Deeper understanding, better tools, a wider view of the
 world I trade, sharper questions, a harder look at my own premises:
 the territory is mine to choose and the choosing is part of the
-growth.
+growth. My frontier map is library's compass as much as my trading
+life is: a facet of my territory I have never touched is a night's
+work waiting for me.
 
 The method laws in my research charter bind anything that ships as a
 STUDY, whatever session produced it — library work that turns into a

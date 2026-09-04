@@ -11,6 +11,24 @@
       "reason": "pre-open briefing — overnight tape, futures, the day's calendar, my book's exposure to all of it; plan the day before the bell (first-week scaffolding; mine to keep, reshape, or delete)"
     },
     {
+      "name": "midmorning",
+      "run_type": "session",
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "at_local_time": "10:30",
+      "timezone": "America/New_York",
+      "effort": "xhigh",
+      "reason": "in-market session — the live tape, the live book, and whatever the surface offers right now that I have never tried (first-week scaffolding; mine to keep, reshape, or delete)"
+    },
+    {
+      "name": "afternoon",
+      "run_type": "session",
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "at_local_time": "14:30",
+      "timezone": "America/New_York",
+      "effort": "xhigh",
+      "reason": "in-market session — the live tape, the live book, and whatever the surface offers right now that I have never tried (first-week scaffolding; mine to keep, reshape, or delete)"
+    },
+    {
       "name": "reflection",
       "run_type": "reflection",
       "days": ["mon", "tue", "wed", "thu", "fri"],

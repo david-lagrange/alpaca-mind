@@ -105,8 +105,8 @@ class Sentinel:
         self.warned_triggers_file = False
         self.last_prune_day = ""
         # agent-authored autonomous scanners: isolated subprocesses on
-        # their own cadence; shadow mode, wake budgets, and quarantine
-        # live in scanners.py. Config-gated.
+        # their own cadence; shadow mode, the runaway guard, and
+        # quarantine live in scanners.py. Config-gated.
         self.scanners = None
         if (cfg.get("scanners") or {}).get("enabled", True):
             from scanners import ScannerRunner

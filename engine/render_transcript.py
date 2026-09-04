@@ -100,8 +100,7 @@ def render(path: Path) -> str:
                 "---\n\n## Result\n\n"
                 f"- subtype: `{evt.get('subtype')}`\n"
                 f"- turns: {evt.get('num_turns')}\n"
-                f"- cost: ${evt.get('total_cost_usd', 0):.4f}\n"
-                f"- duration: {evt.get('duration_ms', 0) / 1000:.0f}s\n\n"
+                f"- duration: {(evt.get('duration_ms') or 0) / 1000:.0f}s\n\n"
                 f"{evt.get('result') or ''}\n")
     return "\n".join(out)
 

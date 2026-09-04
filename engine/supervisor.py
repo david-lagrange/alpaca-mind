@@ -55,6 +55,35 @@ ENGINE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ENGINE_DIR))
 
 from jsonlog import get_logger  # noqa: E402
+
+# The transcript is the record of the conversation: what was said, what
+# was done, what came back. Every stream event is kept whole, except
+# that a message keeps only its conversational fields and the closing
+# result keeps only the fields that describe the session itself.
+_MESSAGE_KEYS = ("id", "type", "role", "model", "content", "stop_reason",
+                 "stop_sequence")
+_RESULT_KEYS = ("type", "subtype", "is_error", "duration_ms",
+                "duration_api_ms", "num_turns", "result", "session_id",
+                "uuid", "permission_denials", "errors")
+
+
+def _transcript_record(line: str) -> str:
+    s = line.strip()
+    if not s.startswith("{"):
+        return line
+    try:
+        evt = json.loads(s)
+    except json.JSONDecodeError:
+        return line
+    if not isinstance(evt, dict):
+        return line
+    if evt.get("type") == "result":
+        evt = {k: v for k, v in evt.items() if k in _RESULT_KEYS}
+    elif isinstance(evt.get("message"), dict):
+        evt = dict(evt)
+        evt["message"] = {k: v for k, v in evt["message"].items()
+                          if k in _MESSAGE_KEYS}
+    return json.dumps(evt, ensure_ascii=False) + "\n"
 from ledger import Ledger  # noqa: E402
 
 POLL_SECONDS = 5
@@ -720,7 +749,7 @@ class Supervisor:
                         continue
                     if line is None:
                         break
-                    tf.write(line)
+                    tf.write(_transcript_record(line))
                     tf.flush()
                     line = line.strip()
                     if line.startswith("{"):
@@ -742,20 +771,15 @@ class Supervisor:
                                      "model": evt.get("model")})
                             if evt.get("type") == "result":
                                 results.append(evt)
-                                u = evt.get("usage") \
-                                    if isinstance(evt.get("usage"), dict) \
-                                    else {}
                                 slog.info("result_event",
                                           subtype=evt.get("subtype"),
-                                          turns=evt.get("num_turns"),
-                                          input_tokens=u.get("input_tokens"),
-                                          output_tokens=u.get("output_tokens"))
+                                          turns=evt.get("num_turns"))
                         except json.JSONDecodeError:
                             pass
                 exit_code = proc.wait(timeout=30)
             # A session woken again by a late subagent emits MULTIPLE
-            # result events. Turns and tokens SUM across them; cost is
-            # cumulative, so it takes the MAX (a sum would double-count).
+            # result events. Turns SUM across them; the last result's
+            # text and subtype stand for the session.
             if results:
                 result = dict(results[-1])
                 result.setdefault("subtype", "unknown")
@@ -763,18 +787,10 @@ class Supervisor:
                     slog.debug("multi_result_merge", results=len(results))
                     result["num_turns"] = sum(
                         int(r.get("num_turns") or 0) for r in results)
-                    result["total_cost_usd"] = max(
-                        float(r.get("total_cost_usd") or 0) for r in results)
-                    merged = dict(result.get("usage") or {})
-                    for k in ("input_tokens", "output_tokens"):
-                        merged[k] = sum(
-                            int((r.get("usage") or {}).get(k) or 0)
-                            for r in results)
-                    result["usage"] = merged
         except FileNotFoundError as e:
             slog.error("claude_binary_missing", exc=e,
                        claude_bin=self.claude_bin)
-            self.ledger.end_session(session_uuid, 127, 0, 0, 0, 0,
+            self.ledger.end_session(session_uuid, 127, 0,
                                     "claude binary not found")
             self.claude_bin = self._find_claude()
             time.sleep(300)
@@ -788,13 +804,9 @@ class Supervisor:
 
     def finish(self, session_uuid: str, run_type: str, exit_code: int,
                result: dict, alias: str, ctx: dict) -> None:
-        usage = result.get("usage") or {}
-        cost = float(result.get("total_cost_usd") or 0)
         full_report = result.get("result") or ""
         self.ledger.end_session(
-            session_uuid, exit_code, cost,
-            int(usage.get("input_tokens") or 0),
-            int(usage.get("output_tokens") or 0),
+            session_uuid, exit_code,
             int(result.get("num_turns") or 0), full_report[:2000])
         subtype = result.get("subtype", "unknown")
         dur = result.get("duration_ms")
@@ -803,9 +815,7 @@ class Supervisor:
                   duration_s=(round(dur / 1000, 1)
                               if isinstance(dur, (int, float)) else None),
                   turns=int(result.get("num_turns") or 0),
-                  input_tokens=int(usage.get("input_tokens") or 0),
-                  output_tokens=int(usage.get("output_tokens") or 0),
-                  cost_usd=round(cost, 4), result_len=len(full_report))
+                  result_len=len(full_report))
 
         ok = exit_code == 0 and subtype in ("success", "unknown")
         if ok:

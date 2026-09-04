@@ -93,9 +93,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     model TEXT,
     wake_reason TEXT,
     exit_code INTEGER,
-    cost_usd REAL DEFAULT 0,
-    input_tokens INTEGER DEFAULT 0,
-    output_tokens INTEGER DEFAULT 0,
     num_turns INTEGER DEFAULT 0,
     transcript_path TEXT,
     result_summary TEXT
@@ -115,6 +112,11 @@ CREATE INDEX IF NOT EXISTS idx_events_ts ON events (ts);
 """
 
 
+SESSION_COLUMNS = ("id", "ts_start", "ts_end", "run_type", "model",
+                   "wake_reason", "exit_code", "num_turns",
+                   "transcript_path", "result_summary")
+
+
 class Ledger:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -123,6 +125,34 @@ class Ledger:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
         self._conn.commit()
+        self._conform("sessions", SESSION_COLUMNS)
+
+    def _conform(self, table: str, columns: tuple) -> None:
+        """A ledger created under an earlier schema may carry columns this
+        one does not define. Rebuild the table to the current shape —
+        every row kept, columns outside the schema dropped — so every
+        reader sees one schema. A no-op when the shapes already match;
+        a concurrent opener that loses the lock simply leaves it to the
+        one that holds it."""
+        have = [r[1] for r in self._conn.execute(
+            f"PRAGMA table_info({table})").fetchall()]
+        if set(have) == set(columns):
+            return
+        keep = ", ".join(c for c in columns if c in have)
+        ddl = SCHEMA[SCHEMA.index(f"CREATE TABLE IF NOT EXISTS {table} ("):]
+        ddl = ddl[:ddl.index(");") + 2].replace("IF NOT EXISTS ", "")
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            self._conn.execute(f"ALTER TABLE {table} RENAME TO {table}__old")
+            self._conn.execute(ddl)
+            self._conn.execute(
+                f"INSERT INTO {table} ({keep}) SELECT {keep} FROM {table}__old")
+            self._conn.execute(f"DROP TABLE {table}__old")
+            self._conn.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table}_ts ON {table} (ts_start)")
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            self._conn.rollback()
 
     # -- generic helpers ------------------------------------------------
 
@@ -305,14 +335,13 @@ class Ledger:
             "transcript_path": transcript_path,
         })
 
-    def end_session(self, session_id: str, exit_code: int, cost_usd: float,
-                    input_tokens: int, output_tokens: int, num_turns: int,
+    def end_session(self, session_id: str, exit_code: int, num_turns: int,
                     result_summary: str) -> None:
         self._conn.execute(
-            """UPDATE sessions SET ts_end=?, exit_code=?, cost_usd=?, input_tokens=?,
-               output_tokens=?, num_turns=?, result_summary=? WHERE id=?""",
-            (time.time(), exit_code, cost_usd, input_tokens, output_tokens,
-             num_turns, result_summary[:2000] if result_summary else None, session_id),
+            """UPDATE sessions SET ts_end=?, exit_code=?, num_turns=?,
+               result_summary=? WHERE id=?""",
+            (time.time(), exit_code, num_turns,
+             result_summary[:2000] if result_summary else None, session_id),
         )
         self._conn.commit()
 

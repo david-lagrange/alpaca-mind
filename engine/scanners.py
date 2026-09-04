@@ -39,9 +39,10 @@ Engine rails (all engine-enforced):
     min 3) log scanner_shadow_fire events instead of waking. Any edit
     (content-hash change) re-enters shadow — code that runs unattended
     earns trust by showing its record first.
-  * WAKE BUDGETS: per-scanner max_wakes_per_day (clamped) + a global
-    daily budget + the supervisor's min-wake debounce. Wake storms are
-    structurally impossible.
+  * RUNAWAY GUARD: per-scanner max_wakes_per_day (clamped) + a global
+    daily ceiling + the supervisor's min-wake debounce. A scanner that
+    fires like a bug cannot storm the agent; a fire the guard holds is
+    logged, and the author reads it in its own health file.
   * QUARANTINE: 3 consecutive failures (crash / timeout / bad output)
     -> scanner disabled + ONE author-wake ("INERT SCANNER"). A broken
     sensor announces itself to its author; the worst failure a sensing
@@ -107,8 +108,8 @@ class ScannerRunner:
         self.dir = self.workspace / "scanners"
         self.state_file = Path(cfg["paths"]["state"]) / ".scanner_health.json"
         self.max_concurrent = int(s.get("max_concurrent", 2))
-        self.global_budget = int(s.get("global_wake_budget_day", 8))
-        self.per_scanner_cap = int(s.get("max_wakes_per_day_cap", 4))
+        self.global_guard = int(s.get("runaway_guard_wakes_per_day", 8))
+        self.per_scanner_cap = int(s.get("runaway_guard_per_scanner", 4))
         self.shadow_min = 3
         # The agent's own lab interpreter when it exists (it may install
         # its own packages there); the system python otherwise.
@@ -342,17 +343,17 @@ class ScannerRunner:
                                   shadow_left=st["shadow_left"])
                 elif (st["wakes_today"] >= r["m"]["max_wakes"]
                       or self.health["global_wakes_today"]
-                      >= self.global_budget):
+                      >= self.global_guard):
                     self.ledger.record_event(
-                        "sentinel", "scanner_budget_exhausted",
+                        "sentinel", "scanner_runaway_guard",
                         {"id": sid, "reason": reason})
-                    self.log.warn("scanner_budget_exhausted", id=sid,
+                    self.log.warn("scanner_runaway_guard", id=sid,
                                   reason=reason,
                                   wakes_today=st["wakes_today"],
                                   max_wakes=r["m"]["max_wakes"],
                                   global_wakes_today=self.health[
                                       "global_wakes_today"],
-                                  global_budget=self.global_budget)
+                                  global_guard=self.global_guard)
                 else:
                     st["wakes_today"] += 1
                     st["total_fires"] += 1

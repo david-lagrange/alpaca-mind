@@ -73,8 +73,11 @@ sentinel:
   balance_snapshot_minutes: 60
   heartbeat_alarm_hours: 26
 
+# The runaway guard: a scanner that fires like a bug is held after this
+# many wakes in a day (per scanner, and across all scanners) — a machine
+# protection against a code loop, never a judgment on a sensor.
 scanners:
   enabled: true
   max_concurrent: 2
-  global_wake_budget_day: 8
-  max_wakes_per_day_cap: 4
+  runaway_guard_wakes_per_day: 8
+  runaway_guard_per_scanner: 4

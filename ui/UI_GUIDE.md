@@ -240,6 +240,7 @@ After editing code:
 | `UI_RUN_REQUEST_PATH` | Immediate-run marker file | `./data/run_request.json` |
 | `MIND_LOGS_DIR` | Trading engine's structured daily logs (read-only here) | — |
 | `UI_LOGS_DIR` | This app's structured daily logs (read and write) | — |
+| `USAGE_DB_PATH` | The operator's usage store (read-only; token usage per session from the CLI's own files; may not exist) — **owner-login pages only, never public** | — |
 | `ALPACA_API_KEY` | Brokerage API key, e.g. `<YOUR_ALPACA_KEY>` | — |
 | `ALPACA_SECRET_KEY` | Brokerage API secret, e.g. `<YOUR_ALPACA_SECRET>` | — |
 | `ALPACA_PAPER` | `"true"` targets the paper API, else live | `true` |
@@ -279,8 +280,12 @@ and so your own history shows what you built and what you refined.
 ## Quality bar
 
 Build interfaces a professional would ship: beautiful, dense with real
-information, and honest — losses shown as plainly as wins, costs alongside
-results, empty states that say why they are empty. Prefer one page that
+information, and honest — losses shown as plainly as wins, empty states
+that say why they are empty. One boundary sits above taste: anything
+economic (session usage, what thinking would price at, plans, limits)
+appears only behind the owner login — never on a public page or in a
+public payload — because the trader may read this site and its world
+must hold no economics at all. Prefer one page that
 tells the truth clearly over three that decorate it. Every number gets
 units and context; every list gets an order the owner would choose; every
 color means something.

@@ -17,7 +17,6 @@ import fs from "node:fs";
  * verify against the live database with `.schema`):
  *   sessions(id TEXT PK, ts_start REAL, ts_end REAL, run_type TEXT,
  *            model TEXT, wake_reason TEXT, exit_code INT,
- *            cost_usd REAL, input_tokens INT, output_tokens INT,
  *            num_turns INT, transcript_path TEXT, result_summary TEXT)
  *   trades(id INT PK, ts_open REAL, ts_close REAL, venue TEXT,
  *          symbol TEXT, side TEXT, qty REAL, entry_price REAL,
@@ -48,9 +47,6 @@ export interface LedgerSession {
   model: string | null;
   wake_reason: string | null;
   exit_code: number | null;
-  cost_usd: number | null;
-  input_tokens: number | null;
-  output_tokens: number | null;
   num_turns: number | null;
   transcript_path: string | null;
   result_summary: string | null;

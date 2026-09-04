@@ -189,14 +189,25 @@ install_claude_for() {
   if [ -x "$bin" ]; then
     have="$(sudo -u "$u" -H "$bin" --version 2>/dev/null || true)"
   fi
+  local have_v
+  have_v="$(printf '%s' "$have" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
   case "$have" in
     *"$CLAUDE_CLI_VERSION"*)
       log "claude $CLAUDE_CLI_VERSION already installed for $u"
       ;;
     *)
-      log "installing claude $CLAUDE_CLI_VERSION for $u"
-      sudo -u "$u" -H env CLAUDE_CLI_VERSION="$CLAUDE_CLI_VERSION" bash -c \
-        'curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_CLI_VERSION"'
+      # Never downgrade: a hand upgrade between setup runs (a model
+      # cutover pinned by hand) stays. A newer installed CLI than the
+      # pin is kept and logged; only an older or missing one is
+      # (re)installed to the pin.
+      if [ -n "$have_v" ] && [ "$(printf '%s\n%s\n' "$CLAUDE_CLI_VERSION" "$have_v" | sort -V | tail -1)" = "$have_v" ] && [ "$have_v" != "$CLAUDE_CLI_VERSION" ]; then
+        log "claude $have_v installed for $u is newer than the pin $CLAUDE_CLI_VERSION — keeping it"
+        CLAUDE_CLI_VERSION="$have_v"
+      else
+        log "installing claude $CLAUDE_CLI_VERSION for $u"
+        sudo -u "$u" -H env CLAUDE_CLI_VERSION="$CLAUDE_CLI_VERSION" bash -c \
+          'curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_CLI_VERSION"'
+      fi
       ;;
   esac
   # PATH wiring for interactive shells (SSM sessions, agent subshells).
@@ -353,6 +364,7 @@ UI_RUN_REQUEST_PATH=/srv/ui/app/data/run_request.json
 MIND_LOGS_DIR=/srv/mind/logs
 UI_LOGS_DIR=/srv/ui/logs
 UI_PUBLIC=${UI_PUBLIC}
+USAGE_DB_PATH=/var/lib/alpaca-mind/ops/usage.db
 EOF
 
 unset ALPACA_API_KEY ALPACA_SECRET_KEY CLAUDE_CODE_OAUTH_TOKEN UI_PASSWORD
@@ -458,6 +470,21 @@ for unit in "$SRC_DIR"/deploy/units/*.service "$SRC_DIR"/deploy/units/*.path \
   install -m 644 "$unit" "/etc/systemd/system/$(basename "$unit")"
 done
 
+# The operator's usage store (USAGE_STORE=on|off, default on): a root-only
+# script in its own tree — outside the engine the agents read — that
+# aggregates token usage from the CLI's own session files into
+# /var/lib/alpaca-mind/ops/usage.db (group ui, read-only). This is the
+# only place usage exists on the machine; the trader has no path to it.
+USAGE_STORE="${USAGE_STORE:-${SAVED_USAGE_STORE:-on}}"
+install -d -m 700 /opt/alpaca-mind-ops
+install -m 700 "$SRC_DIR/deploy/ops/usage_collect.py" /opt/alpaca-mind-ops/usage_collect.py
+if [ "$USAGE_STORE" = "on" ]; then
+  systemctl daemon-reload
+  systemctl enable --now ops-usage.timer
+else
+  systemctl disable --now ops-usage.timer 2>/dev/null || true
+fi
+
 # Nightly S3 backup: root-owned script + config from the stack's values.
 # No BACKUP_BUCKET (an older stack) means the script no-ops harmlessly.
 install -m 750 "$SRC_DIR/deploy/backup.sh" "$ENGINE_HOME/backup.sh"
@@ -531,6 +558,7 @@ SAVED_UI_PORT=${UI_PORT}
 SAVED_AWS_REGION=${AWS_REGION}
 SAVED_BACKUP_BUCKET=${BACKUP_BUCKET}
 SAVED_UI_PUBLIC=${UI_PUBLIC}
+SAVED_USAGE_STORE=${USAGE_STORE}
 EOF
 chmod 644 /etc/default/alpaca-mind-setup
 

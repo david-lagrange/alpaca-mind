@@ -1,0 +1,7 @@
+[Unit]
+Description=alpaca-mind operator usage store (reads the CLI's own session files; root-only)
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/alpaca-mind/venv/bin/python /opt/alpaca-mind-ops/usage_collect.py

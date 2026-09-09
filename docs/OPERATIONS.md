@@ -140,7 +140,8 @@ ahead of that and acts where the agents cannot see:
   read clears it. Look for the file in the daily glance.
 - **Telemetry** — one row per tick in `/var/lib/alpaca-mind/ops/seat.jsonl`
   (root-written, readable by the manager's group, for owner-login pages
-  only): the meters, the reset instants, the state (`normal`,
+  only; the manager's environment names it as `SEAT_TELEMETRY_PATH`):
+  the meters, the reset instants, the state (`normal`,
   `fallback`, `hold_five_hour`, `hold_weekly`, `manual_hold`,
   `gauge_stale`), the table, the hold, and the tick's events. The tick's
   own narration is `journalctl -u ops-seat`; `seat_governor.py --dry-run`

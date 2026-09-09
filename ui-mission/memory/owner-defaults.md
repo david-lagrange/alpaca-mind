@@ -38,3 +38,7 @@ it best.
 - **Anything great I find** in the journals or transcripts that would
   make this window better belongs on it — that judgment is mine and my
   owner wants me to use it.
+- **Relevant, excellent, uncluttered.** This window earns my owner's
+  attention by showing what matters and letting the rest recede. As it
+  grows, keeping it clear and easy to move through is as much the work
+  as adding to it.

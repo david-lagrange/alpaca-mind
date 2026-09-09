@@ -66,6 +66,21 @@ for k in $KEYS; do
   echo "pushed $PREFIX/$k"
 done
 
+# Optional sixth: the seat gauge — a browser login's credentials file
+# (docs/DEPLOYMENT.md §2), pushed from the file so its contents never
+# pass through a terminal or a chat.
+GAUGE_FILE="$(getv GAUGE_CREDENTIALS_FILE)"
+if [ -n "$GAUGE_FILE" ] && [ "${GAUGE_FILE#<}" = "$GAUGE_FILE" ]; then
+  if [ -f "$GAUGE_FILE" ]; then
+    aws ssm put-parameter --name "$PREFIX/GAUGE_CREDENTIALS" --type SecureString \
+      --overwrite --value "file://$GAUGE_FILE" > /dev/null
+    echo "pushed $PREFIX/GAUGE_CREDENTIALS (from $GAUGE_FILE)"
+  else
+    echo "GAUGE_CREDENTIALS_FILE names a file that does not exist: $GAUGE_FILE" >&2
+    exit 1
+  fi
+fi
+
 if [ "$KEEP" = 0 ]; then
   rm -f "$FILE"
   echo "deleted $FILE (staging only — SSM is the home of secrets now)"

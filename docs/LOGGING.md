@@ -20,7 +20,8 @@ Each record: `ts`, `level` (`debug|info|warn|error`), `component`,
 `trace`, and trade activity carries `session_id` so a line correlates
 to the agent session that caused it.
 
-**Start with the Logs page in the UI** (Mind / UI tabs): day picker,
+**Start with the Logs page in the UI** (Mind / UI tabs; behind the
+owner login even in showcase mode): day picker,
 level and component filters, search, expandable records, and a live
 tail. From a shell, `jq` over a daily file answers anything:
 

@@ -25,6 +25,13 @@ Then interview:
   (COSTS.md).
 - **A UI password** (you can generate one) and, later, whether they
   want a domain in front of the UI.
+- **The seat governor** (recommended). The subscription seat that runs
+  the agents has limits; with a second credential — a browser login,
+  two minutes of their time in §2 — the deployment reads the seat's
+  meters and absorbs those limits outside the agents' world instead of
+  letting sessions meet them (OPERATIONS.md, "The seat governor").
+  Without it everything still works; sessions that hit a limit end
+  early and retry on the next tier.
 - **The interface.** Tell them what the UI manager is commissioned to
   build and keep evolving by default: live account tracking with an
   equity curve; every trade with its thesis and honest P&L; lessons
@@ -111,15 +118,36 @@ aws ssm put-parameter --overwrite --name $P/CLAUDE_CODE_OAUTH_TOKEN --type Secur
 aws ssm put-parameter --overwrite --name $P/UI_PASSWORD       --type SecureString --value '<CHOSEN_UI_PASSWORD>'
 ```
 
-**Optional, a sixth: the seat gauge.** The five values above run the
-deployment. A sixth, `$P/GAUGE_CREDENTIALS`, lets the seat governor
-read the subscription seat's meters and absorb its limits from outside
-the agents' world — a spent tier or window is met by the operator's
-machinery before an agent ever meets it. It is a browser login, not a
-token; the procedure and the one-line push are in OPERATIONS.md ("The
-seat governor"). Do it before the stack or any time after: the governor
-bootstraps the credential on its next tick. Without it the engine
-behaves exactly as described everywhere else.
+**A sixth value, recommended: the seat gauge (`$P/GAUGE_CREDENTIALS`).**
+The five values above run the deployment. The sixth lets the seat
+governor read the subscription seat's meters and absorb its limits from
+outside the agents' world, so a spent tier or window is met by the
+operator's machinery before an agent ever meets it. It is a browser
+login, not a token — the token from `claude setup-token` cannot read the
+meters — so, like the token, it is the human's own two minutes, in an
+isolated CLI profile so their everyday login is untouched:
+
+```bash
+export CLAUDE_CONFIG_DIR=~/claude-acct-<seat>   # a fresh, empty directory
+claude        # /login → sign in to the SAME account the token came from → /exit
+```
+
+That leaves `$CLAUDE_CONFIG_DIR/.credentials.json` behind. Push it
+yourself without reading it aloud — either add
+`GAUGE_CREDENTIALS_FILE=<that path>` to `secrets.env` before running
+`push-secrets.sh` (the script pushes the file's contents as the sixth
+parameter), or directly:
+
+```bash
+aws ssm put-parameter --overwrite --name $P/GAUGE_CREDENTIALS \
+  --type SecureString --value "file://$CLAUDE_CONFIG_DIR/.credentials.json"
+```
+
+Before the stack or any time after: setup bootstraps it at first boot,
+and the governor's next tick bootstraps it later. After the first
+refresh the box file is the credential and this copy is stale — that is
+by design (OPERATIONS.md, "The seat governor"). Skipped, the engine
+behaves exactly as described everywhere else; ask before skipping.
 
 ## 3. Create the stack
 

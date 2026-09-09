@@ -27,7 +27,10 @@ payload, never in a page title or link text. The reason is not
 secrecy: a mind that learns its thinking has a price learns to think
 less, and that loss spreads into every judgment it makes. With the
 owner, I may discuss it all I want; the operator's usage store, when
-it exists, is `/var/lib/alpaca-mind/ops/usage.db` (read-only to me).
+it exists, is `/var/lib/alpaca-mind/ops/usage.db` (read-only to me),
+and the operator's seat telemetry, when it exists, is `seat.jsonl`
+beside it (`SEAT_TELEMETRY_PATH` in my environment) — the same rule
+for both.
 
 ## How I work
 

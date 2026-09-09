@@ -21,6 +21,7 @@ enforces.
 | Web app | serve read-views + the inbox | reach anything but its own SQLite, the read-only ledger, the daily log streams (read-only), the usage store (read-only, owner-login pages only), and account READ endpoints |
 | Engine daemons | root-owned code, run as the agent users | — |
 | Usage store (`/var/lib/alpaca-mind/ops`, optional) | root writes it from the CLI's own session files; the `ui` group reads it | the `mind` user: no read, no listing — and nothing in the trader's reachable world names it |
+| Seat governor (`/opt/alpaca-mind-ops`, optional) | as root: read the seat's meters with a login credential (`/var/lib/alpaca-mind/ops/gauge-credentials.json`, mode 600); write the alias table beside the engine config; place and lift the two HALT files, marked as its own; append telemetry the `ui` group may read | touch a HALT the owner placed; leave the agents any path to the credential, the sidecar, or the telemetry — the trader's reachable world holds a world-readable alias table naming a model, nothing economic |
 
 One boundary runs in both directions and is enforced by the OS, not
 by prompts: the trader's world holds no economics (COSTS.md), and the
@@ -67,6 +68,17 @@ Two surfaces that leave the box are secret-free by construction: the
 structured logs never receive keys or auth headers (LOGGING.md), and
 the nightly backup archives exclude `.env` files and credential caches
 (BACKUPS.md) — backups travel to S3; secrets never do.
+
+Two credential classes, one account. The session token
+(`CLAUDE_CODE_OAUTH_TOKEN`, inference scope) runs sessions and cannot
+read the seat's meters. The optional gauge credential
+(`GAUGE_CREDENTIALS`, a browser login's access-and-refresh pair with the
+profile scope) reads the meters and can do nothing the agents need. It
+lives root-only outside both agents' homes, refreshes itself, and never
+enters a `.env`, a log line, or a backup archive (the archives hold the
+agents' homes only). Rotate it by logging in again and pushing the
+parameter; replace the box file by deleting it — the next tick
+re-bootstraps (OPERATIONS.md, "The seat governor").
 
 ## Live money (the honest section)
 

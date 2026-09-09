@@ -33,7 +33,13 @@ fully before explaining it to your human or changing anything.*
 │       entire workspace, and transcripts READ-ONLY)                 │
 │                                                                    │
 │  systemd: mind-supervisor, mind-sentinel, ui-supervisor, ui-web    │
-│    (+ ui-restart.path and the nightly mind-backup.timer → S3)      │
+│    (+ ui-restart.path, the nightly mind-backup.timer → S3, and     │
+│     the operator's timers: ops-usage, ops-seat)                    │
+│                                                                    │
+│  /opt/alpaca-mind-ops (root-only) — THE OPERATOR'S TREE            │
+│    usage_collect.py   usage store from the CLI's own files         │
+│    seat_governor.py   seat meters → alias table + HALT holds       │
+│    gauge.py           reads the meters (login credential)          │
 │  UI served on port 80 (Basic Auth, password set at deploy)         │
 └────────────────────────────────────────────────────────────────────┘
         │                                   │
@@ -85,7 +91,13 @@ the engine source computes none. An optional root-only collector in
 its own tree (`/opt/alpaca-mind-ops`) aggregates usage from the CLI's
 own session files into a store the UI manager may read and the trader
 cannot (COSTS.md) — and the manager shows it only behind the owner
-login, because the trader may read the site.
+login, because the trader may read the site. The same tree holds the
+seat governor: a timer that reads the subscription seat's meters
+through a separate login credential and shapes launches from outside —
+an alias table beside the engine config (what an alias runs as right
+now; the supervisor reads it per launch) and HALT holds with a marker
+around a spent window (OPERATIONS.md). The agents meet a model choice
+and, at most, a pause; the meters stay on the operator's side.
 
 **The ledger** is the truth spine: every order is recorded *before*
 the venue sees it, every trade links to the session (and therefore the

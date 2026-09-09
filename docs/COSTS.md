@@ -47,6 +47,23 @@ session into `/var/lib/alpaca-mind/ops/usage.db`, readable by the UI
 manager only, shown only behind the owner login. `USAGE_STORE=off`
 at setup and even that does not exist.
 
+**Seat awareness — the governor.** The seat's limits are yours to
+absorb, never the mind's to feel. An optional root-only timer in the
+same separate tree (`deploy/ops/seat_governor.py`) reads the seat's
+meters through a login credential you provide (OPERATIONS.md, "The
+seat governor") and shapes launches from outside the agents' world.
+While the deepest tier's weekly meter is spent, the alias the agents
+ask for runs as the next tier at its deepest effort and their
+subagents follow — through an alias table beside the engine config
+that says only what an alias runs as right now. When a window is
+nearly spent, both agents are held (their HALT files, with a marker)
+until the reset, then the trader is woken with a plain operator fact.
+Thresholds are operator config in `/etc/default/alpaca-mind-seat`. The
+mind sees a model choice and, at most, that the operator held sessions
+for a while — never a meter, a percentage, or a reason. Without the
+credential the governor idles, and the engine's reactive retry on the
+next tier is all there is.
+
 **3. Alpaca ($0 — optionally $99/month).** Paper trading is free,
 with free real-time market data sufficient for the default setup (the
 free options data feed serves indicative quotes and greeks). The paid

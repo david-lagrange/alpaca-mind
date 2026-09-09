@@ -45,6 +45,7 @@ habit alive after birth.
 | C11 | Subagents can do substantial work and then end without a final report; the parent salvages from the transcript. Reading a *running* subagent's output dumps raw stream into context | delegated-research reliability |
 | C12 | Waiting in a session means a foreground polling loop inside one shell call; bare sleep chains may be refused by the harness | session wait mechanics |
 | C13 | A seat's plan limit ends a session early with the limit named in the result; the supervisor backs off and sleeps — the shape is described in OPS-BOOK §6 | plan-limit signature; never a finding against the agent |
+| C14 | The CLI accepts an explicit model id where it accepts an alias, and every subagent's model can be forced from the parent's environment (`CLAUDE_CODE_SUBAGENT_MODEL`) — the seat governor's fallback relies on both; **re-verify on every re-pin** with a one-turn canary under the table and a subagent spawn | the alias table; subagent tiers during a fallback |
 
 ### 1b. Models and billing
 | # | Assumption | What it drove |
@@ -54,6 +55,8 @@ habit alive after birth.
 | M3 | Hosted runtimes (managed agents, scheduled cloud routines) are not adopted — the sentinel needs local polling and a local ledger, and self-sufficiency on one instance is a product feature. Re-evaluate quarterly | the one-stack design |
 | M4 | Prompting doctrine per `docs/PROMPTING.md`, distilled from the official guidance for the models in force; craft drift is silent — re-diff it each deep pass | every charter and seed |
 | M5 | **Model boundaries are epoch lines.** Record the first session on any new model in the local record; the evolution scorecard splits windows there; the mind's own fitness-map facts may be stale across the boundary and are its own to re-ground | evolution windows; owner notes |
+| M6 | The seat's meters are readable through the CLI's own login credential at an **unofficial** usage endpoint, refreshed through an **unofficial** token endpoint with the CLI's public client id (constants in `deploy/ops/gauge.py`). Reads spend nothing; a refresh opens a window at zero. Either endpoint moving breaks the governor toward sticky policy plus an ALERT, never toward the agents — **re-verify on every re-pin** and record the payload's shape in `audits-local/FACTS.md` | the gauge; the governor's whole sense of the seat |
+| M7 | The payload carries a rolling five-hour window, a weekly pool, a scoped weekly meter for the deepest tier, and per-model weekly keys that may be null on a given plan; the per-model meters are telemetry only until their semantics are confirmed on your seat | the thresholds; what the telemetry can promise |
 
 ### 1c. The venue (trading, data, MCP)
 | # | Assumption | What it drove |

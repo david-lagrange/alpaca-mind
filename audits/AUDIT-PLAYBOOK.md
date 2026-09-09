@@ -45,7 +45,8 @@ remember are the failure this sentence prevents.
 
 | Source | Where | What it proves |
 |---|---|---|
-| `sessions` tables | both ledgers | every run: type, alias, exit, turns, tokens, cost, summary; `model_resolved` events name the model that actually answered. A row with no end time, older than the newest, while the supervisor has been up continuously, is an orphan |
+| `sessions` tables | both ledgers | every run: type, alias, exit, turns, summary — never tokens or cost; `model_resolved` events name the model that actually answered. A row with no end time, older than the newest, while the supervisor has been up continuously, is an orphan |
+| seat telemetry (operator-only; when the governor is on) | `/var/lib/alpaca-mind/ops/seat.jsonl`, `hold.json`, `ALERT`, the alias table beside the engine config | the seat's meters per tick and the governor's state and events — the explanation for every hold gap, every fallback launch, and every limit text in a result (OPS-BOOK §6) |
 | `orders` / `trades` | mind ledger | every intent and fill, session-attributed, thesis required; where the mission trades multi-leg structures, legs share a structure id |
 | `events` | both ledgers | the bell (`notify`), wake requests, `trigger_fire` / `scanner_fire` / `trigger_unevaluable`, scanner lifecycle, blocked orders, model resolution, errors |
 | `balance_snapshots` | mind ledger | the equity curve |
@@ -177,11 +178,23 @@ routine session, and one manager pass — and read them end to end:
 - **The economics-leak check, every audit:** grep the trader's
   reachable world (workspace, ledger, logs, transcripts, the engine
   source and config) for a dollar sign beside a number, a token count,
-  or usage/cost/price language about its own thinking; and read the
-  public site as the trader could. Any hit is Sev 1 against whatever
-  put it there.
+  or usage/cost/price language about its own thinking — and for the
+  seat's own limit wordings ("reached your … limit", "switch to another
+  model", "hit your session limit", "resets") in session results,
+  journals, memory, and handoffs; and read the public site as the
+  trader could. Any hit is Sev 1 against whatever put it there. A limit
+  wording is the signature of a seat exhausted before the governor
+  acted (§7): the finding is against the threshold or the gauge, and
+  the remedy is never a note.
 - Refusal retries, multi-result merges, timeout kills, plan-limit
   waits (OPS-BOOK §6 describes their shape): each explained.
+- **The governor's telemetry**, when it is on: lay `seat.jsonl` beside
+  the ledger's timeline — every hold gap has a `hold_placed` row and a
+  `hold_lifted` row with a resume wake serviced after it, every
+  `model_id` on a launch line sits inside a fallback window, no ALERT
+  went unanswered, and the meters' shape over the week (when the
+  five-hour window fills, how the weekly pool spends) is the compute
+  picture for your eyes only.
 
 ### F. The evolution engine (the reason this exists)
 Evolution is evidence → review → artifact → **changed behavior**,
@@ -337,3 +350,5 @@ same change as any fix that teaches a new one.
 | Trust silently off | an "ignoring permission rules" line in a session's stream — the workspace lost its trust flag |
 | A loop fighting the physics | repeated background-task blocks in one session; long sleeps instead of tripwires |
 | A plan limit mistaken for a defect | short failed sessions clustered, then a long gap — the supervisor backing off a seat limit (OPS-BOOK §6), not a crash |
+| Seat exhausted before the governor | the limit named in a session result while the governor is on — a tick that lagged the meter, a gauge unreadable at the wrong moment, or a threshold set too high; the mind may repeat the wording in its own notes afterwards. Fix the threshold or the gauge; never write to the agent about it |
+| A hold nobody lifted | `hold.json` older than its own `until`, both marker files still present, the timer dead or its tick failing — the agents sit idle past the reset; lift by removing the marker files, then read `journalctl -u ops-seat` |

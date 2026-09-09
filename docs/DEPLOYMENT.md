@@ -111,6 +111,16 @@ aws ssm put-parameter --overwrite --name $P/CLAUDE_CODE_OAUTH_TOKEN --type Secur
 aws ssm put-parameter --overwrite --name $P/UI_PASSWORD       --type SecureString --value '<CHOSEN_UI_PASSWORD>'
 ```
 
+**Optional, a sixth: the seat gauge.** The five values above run the
+deployment. A sixth, `$P/GAUGE_CREDENTIALS`, lets the seat governor
+read the subscription seat's meters and absorb its limits from outside
+the agents' world — a spent tier or window is met by the operator's
+machinery before an agent ever meets it. It is a browser login, not a
+token; the procedure and the one-line push are in OPERATIONS.md ("The
+seat governor"). Do it before the stack or any time after: the governor
+bootstraps the credential on its next tick. Without it the engine
+behaves exactly as described everywhere else.
+
 ## 3. Create the stack
 
 ```bash

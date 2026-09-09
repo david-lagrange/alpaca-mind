@@ -96,6 +96,89 @@ with examples.
   `sudo -u mind bash -lc 'MIND_CONFIG=/opt/alpaca-mind/engine/config/mind.yaml /opt/alpaca-mind/venv/bin/python /opt/alpaca-mind/engine/trade.py reconcile'`
   → `divergence_count: 0` is the healthy answer.
 
+## The seat governor (optional, recommended)
+
+The subscription seat that runs the agents is metered: a rolling
+five-hour window, a weekly pool across every model, and a separate
+weekly meter on the deepest tier. Left alone, a spent meter shows up as
+sessions ending in one turn with the limit named in the result, and the
+supervisor's reactive retry on the next tier. The governor
+(`ops-seat.timer`, a root-only tick every five minutes) reads the meters
+ahead of that and acts where the agents cannot see:
+
+- **The alias table** — `/opt/alpaca-mind/engine/config/aliases.json`,
+  root-written, world-readable. While the deepest tier's weekly meter is
+  at or above `FABLE_FALLBACK_PCT`, the table maps that alias to the
+  next tier at its deepest effort and names a subagent model, and the
+  supervisor launches through it: the ledger keeps the alias the agent
+  asked for, and the `session_launch` log line carries the id actually
+  passed. Below the threshold, less a margin, the table returns to
+  pass-through. The file carries no meter and no reason, only what an
+  alias runs as right now — the mind may read it and finds a model
+  choice.
+- **Holds** — when the five-hour window is at or above
+  `FIVE_HOUR_HOLD_PCT`, or the weekly pool at or above `WEEKLY_HOLD_PCT`
+  (the pool outranks the window), both agents' HALT files are placed
+  carrying the marker `operator-hold`, and a sidecar
+  (`/var/lib/alpaca-mind/ops/hold.json`) records when to lift. In the
+  record a hold reads as: a `halt_active` line on each supervisor, a gap
+  with no sessions, then — at the reset plus `HOLD_BUFFER_S`, or as soon
+  as the meter has clearly fallen back — the files go, the trader
+  receives a wake request in the operator's voice (*the operator held
+  all sessions from A to B; nothing of yours changed*) unless one of its
+  own sensors already has a request pending, and the manager is asked
+  to run. A session already running when a hold lands continues; it may
+  end at the wall with the limit named, the accepted cost of never
+  cutting a session short.
+- **Your own HALT outranks it.** A HALT file without the marker — one
+  you touched — freezes the governor completely: it places nothing and
+  lifts nothing until your file is gone. To end a governor hold by hand,
+  remove the two marker files; the sidecar follows on the next tick.
+- **An unreadable gauge** keeps the last policy (the table as it is, no
+  new holds), lifts existing holds on time, and after `GAUGE_STALE_S`
+  writes `/var/lib/alpaca-mind/ops/ALERT` with the reason; a successful
+  read clears it. Look for the file in the daily glance.
+- **Telemetry** — one row per tick in `/var/lib/alpaca-mind/ops/seat.jsonl`
+  (root-written, readable by the manager's group, for owner-login pages
+  only): the meters, the reset instants, the state (`normal`,
+  `fallback`, `hold_five_hour`, `hold_weekly`, `manual_hold`,
+  `gauge_stale`), the table, the hold, and the tick's events. The tick's
+  own narration is `journalctl -u ops-seat`; `seat_governor.py --dry-run`
+  as root shows what a tick would do without doing it.
+
+**The gauge credential.** The setup-token that runs sessions cannot read
+the meters; a browser login can. On your own machine, in an isolated CLI
+profile so your everyday login is untouched:
+
+```bash
+export CLAUDE_CONFIG_DIR=~/claude-acct-<seat>     # a fresh, empty directory
+claude       # /login → sign in to the SAME account as the seat's token → /exit
+aws ssm put-parameter --overwrite --name /alpaca-mind/GAUGE_CREDENTIALS \
+  --type SecureString --value "file://$CLAUDE_CONFIG_DIR/.credentials.json"
+```
+
+Setup — or the governor's next tick — copies it once to
+`/var/lib/alpaca-mind/ops/gauge-credentials.json` (root, mode 600), and
+from then on the box file is the credential: it refreshes itself, each
+refresh rotates the pair, and the copies in the parameter store and in
+your profile go stale. That is by design; the parameter is
+bootstrap-only, and a restored box (BACKUPS.md) expects one fresh login
+and push. A box dark for weeks outlives its refresh token the same way:
+log in again, push again, delete the box file, and the next tick
+re-bootstraps.
+
+**The seat is one record.** The session token and the gauge credential
+name the same account. To move the deployment to a new seat: mint a
+token and a login for the new account, push both parameters, delete the
+box gauge file, re-materialize the `.env` files (SECURITY.md), restart
+the supervisors HALT-gated, and let the timer bootstrap the new gauge.
+Never pair one account's token with another's gauge — the governor
+would shape launches from the wrong meters.
+
+Off switch: `SEAT_GOVERNOR=off` at setup (remembered across re-runs), or
+`systemctl disable --now ops-seat.timer`. With no credential on the box
+the timer idles and logs `no_gauge`.
+
 ## Logs
 
 Every component writes structured JSONL, split by UTC day —

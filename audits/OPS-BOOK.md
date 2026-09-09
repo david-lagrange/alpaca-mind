@@ -134,6 +134,15 @@ decided protection; the owner's risk line, if set, not crossed; last
 night's backup verified (journal line and the object in the bucket);
 disk under seventy percent; log caps unhit.
 
+**H8 — the seat (when the governor is on):** `ops-seat.timer` active
+and its last tick recent; `/var/lib/alpaca-mind/ops/ALERT` absent; no
+`hold.json` older than its own `until` (a hold the timer failed to
+lift — remove the two marker files yourself, then read why the tick
+died); the alias table's state agrees with the newest telemetry row;
+the last session's `session_launch` carries a `model_id` only while the
+table is in fallback; no session result carries a limit text since the
+governor went live (§6).
+
 ## 4. Security sweep (weekly with the audit; monthly in full)
 - Engine root-owned, and an agent write test *fails*
   (`sudo -u mind test -w /opt/alpaca-mind/engine/trade.py`); the
@@ -189,21 +198,41 @@ root-written from the CLI's own session files, readable by the UI
 manager only). Every audit greps the trader's reachable world for a
 dollar sign, a token count, or the words usage/cost/price beside a
 number — any hit is a Sev 1 finding against the base repo, however it
-got there. **What a seat limit looks like from outside:** a session
-that hits the plan's limit ends early with the limit named in its
-result; the supervisor retries with backoff and then sleeps an hour —
-so you see a cluster of short failed sessions, then a gap, then normal
-life. That is not a defect and not a finding against the agent — and
-during such a window a `refusal_retry` in the log is the supervisor's
-fallback logic reacting to the failure text, not a model boundary.
-Record the observed result subtype in FACTS.md the first time you see
-one. The levers, all yours: **before birth**, the seeded
+got there. **The seat governor (optional; `docs/OPERATIONS.md`):**
+ahead of a limit, a root-only tick reads the seat's meters and acts in
+this order — stands aside completely while a HALT of the owner's
+exists; with an unreadable gauge keeps the last policy, lifts holds on
+time only, and raises the ALERT file after the grace period; holds
+both agents for a spent weekly pool, else for a spent five-hour window
+(until the reset plus a buffer, or until the meter has clearly fallen
+back); lifts with a resume wake in the operator's voice and a manager
+run-now; and keeps the alias table in fallback while the deepest tier's
+weekly meter is spent, with hysteresis on the way back. Its states, in
+`seat.jsonl`: `normal`, `fallback`, `hold_five_hour`, `hold_weekly`,
+`manual_hold`, `gauge_stale`. Every hold gap, every fallback launch
+(`model_id` on the `session_launch` line), and every ALERT should be
+explained by a telemetry row; a limit text in a session result while
+the governor is on is the incident class "seat exhausted before the
+governor" (the tick lagged the meter, the gauge was unreadable, or a
+threshold sits too high — the fix is a threshold or the gauge, never a
+note to an agent). **What a seat limit looks like from outside, without
+the governor or before it acts:** a session that hits the plan's limit
+ends early with the limit named in its result; the supervisor retries
+with backoff and then sleeps an hour — so you see a cluster of short
+failed sessions, then a gap, then normal life. That is not a defect and
+not a finding against the agent — and during such a window a
+`refusal_retry` in the log is the supervisor's fallback logic reacting
+to the failure text, not a model boundary. Record the observed result
+subtype in FACTS.md the first time you see one, and the limit wordings
+the seat produces, because they are what the leak check greps for
+(AUDIT-PLAYBOOK §E). The levers, all yours: **before birth**, the seeded
 `state/schedule.json` (its slots name their own effort, which
 overrides the config defaults) and the config's model and effort
 defaults for everything else — edited in your fork before deploying
-(`docs/MISSIONS.md`); **after birth**, wake hygiene only — the rhythm
-is the mind's own. Never a note about usage, limits, or cost, and
-never "use less."
+(`docs/MISSIONS.md`); **after birth**, wake hygiene and the governor's
+thresholds (`/etc/default/alpaca-mind-seat`) only — the rhythm is the
+mind's own. Never a note about usage, limits, or cost, and never "use
+less."
 
 ## 7. Incident handling
 Every incident goes into `audits-local/INCIDENTS.md` the day it

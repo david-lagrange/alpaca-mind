@@ -41,6 +41,15 @@ economics are not logged anywhere an agent reads). Trading truth:
 `unrecorded_fill` is the loud failsafe that deserves immediate
 attention if it ever appears.
 
+Launch-time alias resolution: `session_launch` carries `model_id` and
+`subagent_model` only when the operator's alias table resolved the
+alias to something else (OPERATIONS.md, "The seat governor"); a
+malformed table is ignored with one `alias_table_unreadable` warning
+per launch and the alias passes through. The governor is not an engine
+component: its own narration goes to `journalctl -u ops-seat` and its
+telemetry to `/var/lib/alpaca-mind/ops/seat.jsonl`, neither of which an
+agent can read.
+
 ## Levels and filtering
 
 `LOG_LEVEL` (env, default `info`) filters only the journald stream;

@@ -143,6 +143,37 @@ class Supervisor:
                 return str(cand)
         return "claude"
 
+    def _resolve_alias(self, alias: str,
+                       effort: str | None) -> tuple[str, str | None, str | None]:
+        """The operator's alias table resolves an alias to the model and
+        effort it runs as right now; absent, the alias passes to the CLI
+        unchanged. Read per launch, so a table written between sessions
+        takes effect on the next one without a restart. Returns (model id
+        to launch, effort, subagent model or None)."""
+        path = Path(self.cfg_path).parent / "aliases.json"
+        try:
+            if not path.exists():
+                return alias, effort, None
+            table = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            self.log.warn("alias_table_unreadable", path=str(path),
+                          error=repr(e))
+            return alias, effort, None
+        if not isinstance(table, dict):
+            self.log.warn("alias_table_unreadable", path=str(path),
+                          error="not an object")
+            return alias, effort, None
+        entry = (table.get("aliases") or {}).get(alias) \
+            if isinstance(table.get("aliases"), dict) else None
+        model_id = alias
+        if isinstance(entry, dict):
+            if entry.get("model"):
+                model_id = str(entry["model"])
+            if str(entry.get("effort") or "").lower() in self.EFFORT_CHOICES:
+                effort = str(entry["effort"]).lower()
+        sub = table.get("subagent_model")
+        return model_id, effort, (str(sub) if sub else None)
+
     def _cli_version(self) -> tuple:
         """Computed per call (no cache) so a CLI upgrade between launches
         takes effect on the very next session without a restart."""
@@ -649,6 +680,7 @@ class Supervisor:
             or (models.get("effort") or {}).get(
                 ctx.get("run_type_hint") or run_type) \
             or (models.get("effort") or {}).get("default")
+        model_id, effort, subagent_model = self._resolve_alias(alias, effort)
 
         max_turns = int((self.cfg.get(run_type) or {}).get(
             "max_turns", self.cfg["sessions"].get("max_turns", 600)))
@@ -675,10 +707,17 @@ class Supervisor:
         # ceiling keeps a late deep helper from being truncated. The
         # absolute session deadline below still bounds everything.
         env.setdefault("CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS", "1800000")
+        # Subagents inherit the session's environment; the table names a
+        # model for them only while it resolves the session's alias
+        # elsewhere, so their tier moves with the session's.
+        if subagent_model:
+            env["CLAUDE_CODE_SUBAGENT_MODEL"] = subagent_model
+        else:
+            env.pop("CLAUDE_CODE_SUBAGENT_MODEL", None)
 
         cmd = [self.claude_bin, "-p",
                "--output-format", "stream-json", "--verbose",
-               "--model", alias,
+               "--model", model_id,
                "--max-turns", str(max_turns),
                "--dangerously-skip-permissions"]
         if effort:
@@ -688,7 +727,9 @@ class Supervisor:
             cmd += ["--mcp-config", str(mcp_cfg)]
         if self._cli_version() >= (2, 1, 211):
             cmd.append("--forward-subagent-text")
-        slog.info("session_launch", model=alias, effort=effort,
+        slog.info("session_launch", model=alias,
+                  model_id=(model_id if model_id != alias else None),
+                  effort=effort, subagent_model=subagent_model,
                   max_turns=max_turns, transcript=str(transcript),
                   prompt_snapshot=str(transcript.with_suffix(".prompt.md")))
         self.ledger.start_session(session_uuid, run_type, alias,

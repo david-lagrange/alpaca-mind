@@ -217,6 +217,16 @@ The owner can also request an immediate run: the app writes a marker file
 (`UI_RUN_REQUEST_PATH`, default `./data/run_request.json`) containing
 `{"requested_at": "<ISO 8601>"}`. Your scheduler consumes and deletes it.
 
+The inbox page shows the owner where you stand through
+`components/RunStatus.tsx` and `/api/inbox/status` — a gift like the
+mobile drawer: restyle it or fold it into something larger, but preserve
+its behaviors. Pressing "run now" gives feedback in place; "running" and
+its clock come from your own newest session row (`UI_LEDGER_PATH`), so
+the clock counts from that pass's own start and never from a paired
+event that may belong to an earlier pass; a finished pass shows its exit
+code, and a non-zero one says so. A button that gives no feedback reads
+as broken, and a clock that counts from the wrong pass reads as a lie.
+
 ## Build and restart contract
 
 After editing code:
@@ -234,13 +244,15 @@ After editing code:
 | Variable | Purpose | Default |
 | --- | --- | --- |
 | `UI_PASSWORD` | Basic Auth password (user `owner`); app serves 503 without it | — |
-| `UI_PUBLIC` | `"true"` = showcase mode: read-only site open to anyone; inbox + all mutating requests still require auth | `false` |
+| `UI_PUBLIC` | `"true"` = showcase mode: read-only site open to anyone; the inbox, the logs, and all mutating requests still require auth | `false` |
 | `UI_DB_PATH` | The UI's own SQLite database | `./data/ui.sqlite` |
 | `LEDGER_PATH` | The trading engine's ledger (read-only) | — |
+| `UI_LEDGER_PATH` | Your own supervisor's ledger — your sessions, read-only; the inbox status element reads its newest row | — |
 | `UI_RUN_REQUEST_PATH` | Immediate-run marker file | `./data/run_request.json` |
 | `MIND_LOGS_DIR` | Trading engine's structured daily logs (read-only here) | — |
 | `UI_LOGS_DIR` | This app's structured daily logs (read and write) | — |
 | `USAGE_DB_PATH` | The operator's usage store (read-only; token usage per session from the CLI's own files; may not exist) — **owner-login pages only, never public** | — |
+| `SEAT_TELEMETRY_PATH` | The operator's seat telemetry (read-only; one JSON row per tick about the subscription seat the sessions run on — meters, state, the alias table in force, any hold; may not exist) — **owner-login pages only, never public** | — |
 | `ALPACA_API_KEY` | Brokerage API key, e.g. `<YOUR_ALPACA_KEY>` | — |
 | `ALPACA_SECRET_KEY` | Brokerage API secret, e.g. `<YOUR_ALPACA_SECRET>` | — |
 | `ALPACA_PAPER` | `"true"` targets the paper API, else live | `true` |
@@ -288,4 +300,8 @@ public payload — because the trader may read this site and its world
 must hold no economics at all. Prefer one page that
 tells the truth clearly over three that decorate it. Every number gets
 units and context; every list gets an order the owner would choose; every
-color means something.
+color means something. And anything the site says about the trader's
+current state — its schedule, its open book, what it is watching, how
+many of anything — is computed at request time from the file or table it
+describes, never written down from a snapshot: a sentence that was true
+when you wrote it goes stale silently and reads as a lie later.

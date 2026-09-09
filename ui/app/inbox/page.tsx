@@ -1,3 +1,4 @@
+import RunStatus from "@/components/RunStatus";
 import { kvGet, listInbox, unreadInboxCount } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,9 +11,10 @@ export const dynamic = "force-dynamic";
  * run; it builds or adjusts the interface to address them, then marks each
  * message read/addressed with a note explaining what it did.
  *
- * When unread messages are waiting, the owner can request an immediate
- * UI-manager run instead of waiting for the schedule; the request is a
- * file the manager's scheduler watches for (see /api/run-now).
+ * The owner can request an immediate UI-manager run instead of waiting
+ * for the schedule; the request is a file the manager's scheduler watches
+ * for (see /api/run-now), and the status element shows the request being
+ * picked up, the pass running, and how it finished.
  */
 
 function formatIso(iso: string): string {
@@ -106,23 +108,9 @@ export default function InboxPage() {
         </div>
       </form>
 
-      {unread > 0 && (
-        <form
-          method="post"
-          action="/api/run-now"
-          className="mt-4 flex items-center justify-between rounded-lg border border-warn/30 bg-surface p-4"
-        >
-          <p className="text-sm text-muted">
-            {unread} unread {unread === 1 ? "message" : "messages"} waiting.
-          </p>
-          <button
-            type="submit"
-            className="rounded-md border border-warn/50 px-4 py-1.5 text-sm font-medium text-warn transition-colors hover:bg-warn/10"
-          >
-            Run UI manager now
-          </button>
-        </form>
-      )}
+      {/* Where the manager stands, and the button to summon it — a
+          component that reports what it did (see components/RunStatus). */}
+      <RunStatus unread={unread} />
 
       <ul className="mt-8 space-y-3">
         {messages.length === 0 && (

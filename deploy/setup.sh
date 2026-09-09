@@ -366,7 +366,9 @@ UI_RUN_REQUEST_PATH=/srv/ui/app/data/run_request.json
 MIND_LOGS_DIR=/srv/mind/logs
 UI_LOGS_DIR=/srv/ui/logs
 UI_PUBLIC=${UI_PUBLIC}
+UI_LEDGER_PATH=/srv/ui/ledger.db
 USAGE_DB_PATH=/var/lib/alpaca-mind/ops/usage.db
+SEAT_TELEMETRY_PATH=/var/lib/alpaca-mind/ops/seat.jsonl
 EOF
 
 unset ALPACA_API_KEY ALPACA_SECRET_KEY CLAUDE_CODE_OAUTH_TOKEN UI_PASSWORD

@@ -9,12 +9,13 @@ import { NextRequest, NextResponse } from "next/server";
  * only.
  *
  * Showcase mode (UI_PUBLIC=true): the read-only site is open to anyone —
- * for deployments the owner wants to show the world — while everything
- * that STEERS stays gated: the inbox (page and API, reads included; the
- * owner's requests are theirs) and every mutating request, whichever
- * route carries it. Method-based gating covers routes that don't exist
- * yet — the interface grows itself, and a future POST must not be born
- * open.
+ * for deployments the owner wants to show the world — while the owner's
+ * own surfaces stay gated: the inbox (page and API, reads included; the
+ * owner's requests are theirs), the logs (the operator's instrument, and
+ * the one stream whose future lines nobody has reviewed for a public
+ * page), and every mutating request, whichever route carries it.
+ * Method-based gating covers routes that don't exist yet — the interface
+ * grows itself, and a future POST must not be born open.
  *
  * Username is fixed ("owner"); the password comes from the UI_PASSWORD
  * environment variable. If that variable is unset the app refuses to serve
@@ -35,7 +36,11 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function unauthorized(challenge = true, publicSite = false): NextResponse {
+function unauthorized(
+  challenge = true,
+  publicSite = false,
+  requestedPath = "/inbox"
+): NextResponse {
   // The WWW-Authenticate header is what makes a browser throw its
   // sign-in dialog. On a public showcase page, a background fetch to a
   // gated API must fail QUIETLY (plain 401, component shows its
@@ -47,14 +52,17 @@ function unauthorized(challenge = true, publicSite = false): NextResponse {
   // A deliberate navigation to a gated page gets a real page under the
   // browser's dialog: cancelling the prompt must never strand a visitor
   // on a bare wall of text with no way back.
+  const safePath = /^\/[A-Za-z0-9_\-./]*$/.test(requestedPath)
+    ? requestedPath
+    : "/inbox";
   const backLink = publicSite
     ? `<p><a href="/">&larr; Back to the open site</a> &middot;
-         <a href="/inbox">Try signing in again</a></p>`
+         <a href="${safePath}">Try signing in again</a></p>`
     : `<p><a href="/">Try again</a></p>`;
   const lede = publicSite
-    ? `This page is the owner&rsquo;s inbox &mdash; where requests steer
-       what the interface shows. It takes a password; the rest of the
-       site is open to everyone.`
+    ? `This page is the owner&rsquo;s &mdash; the inbox that steers what
+       the interface shows, or the logs behind it. It takes a password;
+       the rest of the site is open to everyone.`
     : `This interface is private to its owner and takes a password.`;
   const html = `<!doctype html>
 <html lang="en">
@@ -160,11 +168,16 @@ export function middleware(request: NextRequest): NextResponse {
     const safeMethod =
       method === "GET" || method === "HEAD" || method === "OPTIONS";
     const path = request.nextUrl.pathname;
-    const inboxSurface =
+    // The owner's surfaces: the inbox steers the interface, and the
+    // logs are the operator's instrument, not the showcase's content.
+    const ownerSurface =
       path === "/inbox" ||
       path.startsWith("/inbox/") ||
-      path.startsWith("/api/inbox");
-    if (safeMethod && !inboxSurface) {
+      path.startsWith("/api/inbox") ||
+      path === "/logs" ||
+      path.startsWith("/logs/") ||
+      path.startsWith("/api/logs");
+    if (safeMethod && !ownerSurface) {
       return NextResponse.next();
     }
   }
@@ -175,7 +188,7 @@ export function middleware(request: NextRequest): NextResponse {
 
   const header = request.headers.get("authorization") ?? "";
   if (!header.startsWith("Basic ")) {
-    return unauthorized(challenge, publicMode);
+    return unauthorized(challenge, publicMode, request.nextUrl.pathname);
   }
 
   let user = "";
@@ -183,18 +196,20 @@ export function middleware(request: NextRequest): NextResponse {
   try {
     const decoded = atob(header.slice(6).trim());
     const sep = decoded.indexOf(":");
-    if (sep === -1) return unauthorized(challenge, publicMode);
+    if (sep === -1) {
+      return unauthorized(challenge, publicMode, request.nextUrl.pathname);
+    }
     user = decoded.slice(0, sep);
     pass = decoded.slice(sep + 1);
   } catch {
-    return unauthorized(challenge, publicMode);
+    return unauthorized(challenge, publicMode, request.nextUrl.pathname);
   }
 
   // Evaluate both comparisons unconditionally to keep timing uniform.
   const userOk = safeEqual(user, USERNAME);
   const passOk = safeEqual(pass, password);
   if (!(userOk && passOk)) {
-    return unauthorized(challenge, publicMode);
+    return unauthorized(challenge, publicMode, request.nextUrl.pathname);
   }
 
   return NextResponse.next();

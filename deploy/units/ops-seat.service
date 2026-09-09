@@ -1,0 +1,15 @@
+[Unit]
+Description=alpaca-mind seat governor (reads the seat's meters; shapes launches from outside the agents' world; root-only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+# Thresholds and the fallback tier (operator config, mode 600), then the
+# remembered setup parameters (the parameter-store prefix and region the
+# gauge bootstrap reads from). Both optional: the script has defaults.
+EnvironmentFile=-/etc/default/alpaca-mind-seat
+EnvironmentFile=-/etc/default/alpaca-mind-setup
+ExecStart=/opt/alpaca-mind/venv/bin/python /opt/alpaca-mind-ops/seat_governor.py
+TimeoutStartSec=180

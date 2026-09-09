@@ -1,0 +1,12 @@
+[Unit]
+Description=Seat governor tick every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+# A missed tick runs at the next boot: a hold left behind by an outage
+# must not wait for the next window to be noticed.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

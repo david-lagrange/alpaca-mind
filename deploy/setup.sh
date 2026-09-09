@@ -25,6 +25,8 @@
 #   CLAUDE_CLI_VERSION  pinned Claude Code CLI version (see cloudformation.yaml)
 #   UI_PORT             public UI port                 (80)
 #   AWS_REGION          region for SSM reads           (auto-detected if unset)
+#   USAGE_STORE         operator usage store on|off    (on)
+#   SEAT_GOVERNOR       seat governor timer on|off     (on)
 # =============================================================================
 
 set -euo pipefail
@@ -485,6 +487,55 @@ else
   systemctl disable --now ops-usage.timer 2>/dev/null || true
 fi
 
+# The seat governor (SEAT_GOVERNOR=on|off, default on): a root-only timer
+# in the same separate tree that reads the subscription seat's meters
+# through a login credential (the optional GAUGE_CREDENTIALS parameter)
+# and shapes launches from outside the agents' world — an alias table
+# beside the engine config while the deepest tier's weekly meter is
+# spent, and HALT holds around a spent window. Without a credential it
+# idles and the engine behaves exactly as it does without it.
+SEAT_GOVERNOR="${SEAT_GOVERNOR:-${SAVED_SEAT_GOVERNOR:-on}}"
+install -m 700 "$SRC_DIR/deploy/ops/gauge.py" /opt/alpaca-mind-ops/gauge.py
+install -m 700 "$SRC_DIR/deploy/ops/seat_governor.py" /opt/alpaca-mind-ops/seat_governor.py
+install -d -m 750 -o root -g ui /var/lib/alpaca-mind/ops
+if [ ! -f /etc/default/alpaca-mind-seat ]; then
+  # Thresholds are operator config: written once, then the operator's to
+  # edit. A re-run never resets a tuned number.
+  cat > /etc/default/alpaca-mind-seat <<EOF
+# Seat governor thresholds, in percent of the seat's meters (operator config).
+FABLE_FALLBACK_PCT=90
+FIVE_HOUR_HOLD_PCT=88
+WEEKLY_HOLD_PCT=97
+HOLD_BUFFER_S=120
+GAUGE_STALE_S=1800
+# What the deepest tier's alias runs as while its weekly meter is spent.
+FALLBACK_ALIAS=fable
+FALLBACK_MODEL=claude-opus-5
+FALLBACK_EFFORT=max
+EOF
+  chmod 600 /etc/default/alpaca-mind-seat
+fi
+GAUGE_FILE=/var/lib/alpaca-mind/ops/gauge-credentials.json
+if [ ! -f "$GAUGE_FILE" ]; then
+  # Bootstrap only: after its first refresh the box file IS the credential
+  # and the parameter's copy is stale, so a re-run never pulls over it.
+  if GAUGE_JSON="$(aws ssm get-parameter --name "${SSM_PREFIX}/GAUGE_CREDENTIALS" \
+        --with-decryption --query Parameter.Value --output text 2>/dev/null)"; then
+    install -m 600 /dev/null "$GAUGE_FILE"
+    printf '%s\n' "$GAUGE_JSON" > "$GAUGE_FILE"
+    log "gauge credential bootstrapped from SSM"
+  else
+    log "no GAUGE_CREDENTIALS parameter — the seat governor idles until one exists"
+  fi
+  unset GAUGE_JSON
+fi
+if [ "$SEAT_GOVERNOR" = "on" ]; then
+  systemctl daemon-reload
+  systemctl enable --now ops-seat.timer
+else
+  systemctl disable --now ops-seat.timer 2>/dev/null || true
+fi
+
 # Nightly S3 backup: root-owned script + config from the stack's values.
 # No BACKUP_BUCKET (an older stack) means the script no-ops harmlessly.
 install -m 750 "$SRC_DIR/deploy/backup.sh" "$ENGINE_HOME/backup.sh"
@@ -559,6 +610,7 @@ SAVED_AWS_REGION=${AWS_REGION}
 SAVED_BACKUP_BUCKET=${BACKUP_BUCKET}
 SAVED_UI_PUBLIC=${UI_PUBLIC}
 SAVED_USAGE_STORE=${USAGE_STORE}
+SAVED_SEAT_GOVERNOR=${SEAT_GOVERNOR}
 EOF
 chmod 644 /etc/default/alpaca-mind-setup
 
